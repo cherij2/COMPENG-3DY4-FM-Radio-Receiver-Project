@@ -32,7 +32,62 @@ void computeVectorMagnitude(const std::vector<std::complex<float>> &Xf, std::vec
 }
 
 // add your own code to estimate the PSD
+void estimatePSD(const std::vector<float> &samples, std::vector<float> &freq, std::vector<float> &psd_est, const float Fs)
+{                       // went throgh line by line and implemented the python code into cpp
+                        // only a couple difference being that when doing array math, cpp
+  int freq_bins = NFFT; // Use the NFFT constant from dy4.hy positive freq
 
+  float df = Fs / freq_bins;
+
+  freq.clear();
+  freq.resize(freq_bins / 2);
+
+  for (int i = 0; i < freq_bins / 2; i++) {
+    freq[i] = i * df; // this does what freq = np.arrange(0, Fs/2, df) does in the python function
+  }
+
+  std::vector<float> hann(freq_bins);
+  for (int i = 0; i < freq_bins; i++){
+    hann[i] = std::pow(std::sin(i * PI / freq_bins), 2);
+  }
+
+  std::vector<float> psd_list;
+  int no_segments = static_cast<int>(std::floor(samples.size() / static_cast<float>(freq_bins)));
+
+  for (int k = 0; k < no_segments; k++){ // iterates through all the segments
+    std::vector<float> windowed_samples(freq_bins);
+    for (int i = 0; i < freq_bins; i++){
+      windowed_samples[i] = samples[k * freq_bins + i] * hann[i]; // again there is no array slicing in cpp, so a for loop must be used
+    }
+
+    std::vector<std::complex<float>> Xf(freq_bins);
+    DFT(windowed_samples, Xf); // there is no fft so we use the DFT function created in order to do the fourier transform
+
+    std::vector<float> psd_seg(freq_bins / 2);
+
+    // you cannot slice array in cpp like python so we have iterate through the size of the array and at every index do the math
+    // for loop below does psd_seg = (1/Fs*freq_bins/2) ** but we have the normalize function in the complex library
+    // it also does psd_seg = (1/(Fs*freq_bins/2)) * (abs(Xf)**2)
+    // psd_seg = 2*psd_seg
+    for (int i = 0; i < freq_bins / 2; i++) {
+      psd_seg[i] = (1 / (Fs * freq_bins / 2)) * std::norm(Xf[i]);
+      psd_seg[i] *= 2;
+      psd_seg[i] = 10 * std::log10(psd_seg[i]);
+    }
+
+    psd_list.insert(psd_list.end(), psd_seg.begin(), psd_seg.end());
+  }
+  // the code below just changes the python code into cpp
+  psd_est.clear();
+  psd_est.resize(freq_bins / 2, 0.0);
+
+  for (int k = 0; k < freq_bins / 2; k++) {
+    for (int l = 0; l < no_segments; l++) {
+      psd_est[k] += psd_list[k + l * (freq_bins / 2)];
+    }
+    psd_est[k] /= no_segments;
+  }
+}
 //////////////////////////////////////////////////////
 
 // added IDFT and FFT-related functions

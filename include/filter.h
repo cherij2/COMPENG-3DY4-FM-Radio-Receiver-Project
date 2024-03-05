@@ -11,7 +11,13 @@ Ontario, Canada
 
 // add headers as needed
 #include <iostream>
+#include <fstream>
 #include <vector>
+#include <iomanip>
+#include <complex>
+#include <cmath>
+#include <stdlib.h>
+#include <algorithm>
 
 // declaration of a function prototypes
 void impulseResponseLPF(float, float, unsigned short int, std::vector<float> &);
