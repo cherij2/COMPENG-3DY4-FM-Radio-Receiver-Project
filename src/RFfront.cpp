@@ -60,7 +60,7 @@ void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I,
     }
 }
 
-void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &prev_phase, float &I_prev, float &Q_prev, std::vector<float> &current_phase)
+void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I_prev, float &Q_prev, std::vector<float> &current_phase)
 {
 
     current_phase.clear(); current_phase.resize(I.size());

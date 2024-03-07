@@ -18,147 +18,24 @@ Ontario, Canada
 // -------------------------- RF FRONT END ------------------------------
 
 // function for computing the impulse response (reuse from previous experiment)
-void LPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h)
-{
-	// allocate memory for the impulse response
-	h.clear();
-	h.resize(num_taps, 0.0);
-	float Norm_cutoff = Fc / (Fs / 2);
-
-	for (int m = 0; m < num_taps; m++)
-	{
-		if (m == ((num_taps - 1) / 2))
-		{
-			h[m] = Norm_cutoff;
-		}
-		else
-		{
-			h[m] = Norm_cutoff * (std::sin(PI * Norm_cutoff * (m - (num_taps - 1) / 2)) / (PI * Norm_cutoff * (m - (num_taps - 1) / 2)));
-		}
-		h[m] = h[m] * pow((std::sin((m * PI) / num_taps)), 2);
-	}
-}
 
 
 //creates blocks from input to pass into blockFIR, as stated to in the comments
-void createBlocks(const std::vector<float> &x, int block_size, std::vector<std::vector<float>> &blocks)
-{
-	blocks.clear();
-	int num_blocks = x.size() / block_size;//calculate number of blocks based on the size of input vector x
-	for (int i = 0; i < num_blocks; i++)//iterate over number of blocks
-	{
-		std::vector<float> block(x.begin() + i * block_size, x.begin() + (i + 1) * block_size);
-		blocks.push_back(block);//add the current block to blocks vector
-	}//divides input vector into block_size number of blocks, this is done for processing data in blocks
-}
 
-
-void blockConvolutionFIR(std::vector<float> & yb, const std::vector<float> &xb, const std::vector<float> &h, std::vector<float> &state)
-{//parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
-	yb.clear();//this implementation copies the python code
-	yb.resize(xb.size(), 0.0);
-
-	for (int n = 0; n < xb.size(); n++)
-	{
-		for (int k = 0; k < h.size(); k++)
-		{
-			if (n - k >= 0)
-			{
-				yb[n] += h[k] * xb[n - k];
-			}
-			else
-			{
-				yb[n] += h[k] * state[h.size() - 1 + (n - k)];//
-			}
-		}
-	}
-
-	for (int i = 0; i < h.size() - 1; i++)//updates the state at the end for the next block to be used
-	{
-		state[i] = xb[xb.size() - h.size() + 1 + i];
-	}
-}
 
 // function to read audio data from a binary file that contains raw samples
 // represented as 32-bit floats; we also assume two audio channels
 // note: check the Python script that can prepare this type of files
 // directly from .wav files
-void read_raw_data(const std::string in_fname, std::vector<float> &raw_data)
-{
-	// file descriptor for the input to be read
-	std::ifstream fdin(in_fname, std::ios::binary);
-	if (!fdin)
-	{
-		std::cout << "File " << in_fname << " not found ... exiting\n";
-		exit(1);
-	}
-	else
-	{
-		std::cout << "Reading raw audio from \"" << in_fname << "\"\n";
-	}
-	// search for end of file to count the number of samples to be read
-	fdin.seekg(0, std::ios::end);
-	// we assume the Python script has written data in 32-bit floats
-	const unsigned int num_samples = fdin.tellg() / sizeof(float);
 
-	// allocate memory space to store all the samples
-	raw_data.clear();
-	raw_data.resize(num_samples);
-	// back to the beginning of the file to read all samples at once
-	fdin.seekg(0, std::ios::beg);
-	// do a single read for audio data from the input file stream
-	fdin.read(reinterpret_cast<char *>(&raw_data[0]),
-				num_samples * sizeof(float));
-	// close the input file
-	fdin.close();
-}
 
-// function to split an audio data where the left channel is in even samples
-// and the right channel is in odd samples
-// (I samples are even, Q samples are odd)
-void split_raw_data_into_channels(const std::vector<float> &raw_data, std::vector<float> &i_data, std::vector<float> &q_data)
-{
-	for (int i = 0; i < (int)raw_data.size(); i++)
-	{
-		if (i % 2 == 0)
-			i_data.push_back(raw_data[i]);
-		else
-			q_data.push_back(raw_data[i]);
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
+	std::vector<char> raw_data(num_samples);
+	std::cin.read(reinterpret_cast<char*>(&raw_data[0]),num_samples*sizeof(char));
+	for (int k=0; k<(int)num_samples; k++){
+		block_data[k] = float((unsigned char)raw_data[k]-128/128.0);
 	}
 }
-
-// function to write audio data to a binary file that contains raw samples
-// represented as 32-bit floats; we also assume two audio channels
-// note: check the python script that can read this type of files
-// and then reformat them to .wav files to be run on third-party players
-void write_raw_data(const std::string out_fname, const std::vector<float> &i_data, const std::vector<float> &q_data)
-{
-	// file descriptor for the output to be written
-	if (i_data.size() != q_data.size())
-	{
-		std::cout << "Something got messed up with audio channels\n";
-		std::cout << "They must have the same size ... exiting\n";
-		exit(1);
-	}
-	else
-	{
-		std::cout << "Writing raw audio to \"" << out_fname << "\"\n";
-	}
-	std::ofstream fdout(out_fname, std::ios::binary);
-	for (int i = 0; i < (int)i_data.size(); i++)
-	{
-		// we assume we have handled a stereo audio file
-		// hence, we must interleave the two channels
-		// (change as needed if testing with mono files)
-		fdout.write(reinterpret_cast<const char *>(&i_data[i]),
-					sizeof(i_data[i]));
-		fdout.write(reinterpret_cast<const char *>(&q_data[i]),
-					sizeof(q_data[i]));
-	}
-	fdout.close();
-}
-
-
 int main()
 {
 	
@@ -196,19 +73,48 @@ int main()
 	Q_prev = 0
 	
 	 */
+
 	
-	float RF_M0_Fs = 2400;
-	float RF_M0_Fc = 16000;
-	float RF_M0_numTaps = 101;
-	std::vector<float> RF_M0_h;
+	float RF_Fs = 2400e3;
+	float RF_Fc = 100e3;
+	float IF_Fs = 240e3;
+	float mono_Fc = 16e3;
+	float num_Taps = 101;
+	int rf_decim = 10;
+	int audio_decim = 5;
+	std::vector<float> RF_h;
+	std::vector<float> IF_h;
 	
-	std::vector<float> raw_data;
-	std::vector<float> i_data(), q_data();
-	std::vector<float> iq_data(raw_data.size());
+	std::vector<float> i_data, q_data;
+	std::vector<float> filt_i, filt_q;
+	std::vector<float> demod;
+	float prev_i = 0.0; 
+	float prev_q =0.0;
+	std::vector<float> mono_out;
+
+
 	
-	const std::string in_fname = "../data/samples3.raw";
-	std::vector<float> raw_data;
-	read_raw_data(in_fname, raw_data);
+	int BLOCK_SIZE = 1024 * rf_decim * audio_decim * 2;
+
+	for (unsigned int block_id = 0;  ; block_id++) {
+		std::vector<float> block_data(BLOCK_SIZE);
+		readStdinBlockData(BLOCK_SIZE, block_id, block_data);
+		if((std::cin.rdstate()) != 0) {
+			std::cerr << "End of input stream reached" << std::endl;
+			exit(1);
+		}
+		std::cerr << "Read block " << block_id << std::endl;
+		split_audio_iq(block_data, i_data, q_data);
+		impulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h);
+		conv_ds_slow(filt_i, i_data, RF_h, rf_decim);
+		conv_ds_slow(filt_q, q_data, RF_h, rf_decim);
+		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+		impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
+		conv_ds_slow(mono_out, demod, IF_h, audio_decim);
+
+	}
+
+	
 
 	return 0;
 }
