@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	std::vector<float> demod;
 	float prev_i = 0.0; 
 	float prev_q =0.0;
-	std::vector<float> processed_data;
+	std::vector<float> processed_data(BLOCK_SIZE);
 
 	int BLOCK_SIZE = 1024 * rf_decim * audio_decim * 2;
 
@@ -126,12 +126,24 @@ int main(int argc, char *argv[])
 		impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
 		conv_ds_slow(processed_data, demod, IF_h, audio_decim);
 
+/*
 		std::vector<short int> audio_data(BLOCK_SIZE);
 		for (unsigned int k = 0; k < processed_data.size(); k++){
 			if (std::isnan(processed_data[k])) audio_data[k] = 0;
 			else audio_data[k] = static_cast<short int> (processed_data[k]*16384);
 		}
 		fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
+
+*/
+		short int sample; 
+		for (unsigned int k = 0; k <processed.data_size(); k++){
+			if (std::isnan(processed_data[k])) sample = 0;
+			else sample = static_cast<short int>(processed_data[k] * 16384);
+			fwrite(&sample, 1, sizeof(short int), stdout);
+		}
+
+	
 
 	}
 	return 0;
