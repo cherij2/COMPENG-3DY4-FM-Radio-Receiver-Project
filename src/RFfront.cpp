@@ -51,6 +51,8 @@ void conv_ds_slow(std::vector<float> &y, const std::vector<float> &x, const std:
     
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
 {
+    I.clear(); I.resize(audio_data.size()/2);
+    Q.clear(); Q.resize(audio_data.size()/2);
     for (int i = 0; i < (int)audio_data.size(); i++)
     {
         if (i % 2 == 0)
