@@ -70,5 +70,7 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
         float deriv_Q = Q[i] - Q_prev;
         
         current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0)? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / (std::pow(I[i], 2) + std::pow(Q[i], 2));
+        I_prev = I[i];
+        Q_prev = Q[i];   
     }//if I or Q at that index = 0 make that demod element at that index  = 0
 }

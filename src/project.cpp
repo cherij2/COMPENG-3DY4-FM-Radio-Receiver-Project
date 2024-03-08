@@ -34,49 +34,39 @@ void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::ve
 	}
 }
 
-	
 /* int main(int argc, char* argv[])
 {
-
+	// Default mode 0
 	int mode = 0;
-	int channel = 0;
-	if(argc < 2){
-		std::cerr<< "Operating in default mode 0" << std::endl;
-	}
-	else if (argc == 2){
+	std::string audio_channel = "m"; // default to mono
 
+	// Mode Selection
+	if (argc < 2) {
+		std::cerr << "Operating in default mode 0 with mono audio" << std::endl;
+	} else if (argc == 2) {
 		mode = atoi(argv[1]);
-		if (mode > 3){
-			std::cerr << "Wrong mode " << mode << std::endl;
-			exit(1);		
-		}
-		else {
-			std::cerr << "Usage: "<< argv[0] <<std::endl;
-			std::cerr << "or " << std::endl;
-			std::cerr << "Usage: "<< argv[0] << "<mode>" << std::endl;
-			std::cerr << "\t\t <mode> is a value from 0 to 3" << std::endl;
+		if (mode > 3) {
+			std::cerr << "Wrong mode " << mode << ". Mode must be between 0 and 3." << std::endl;
 			exit(1);
-			}
-		std::cerr << "Operating in mode" << mode << std::endl;
-	}
-	else if (argc == 3){
+		}
+		std::cerr << "Operating in mode " << mode << " with mono audio" << std::endl;
+	} else if (argc == 3) {
 		mode = atoi(argv[1]);
-		channel = atoi(argv[2]);
-		if (mode > 3){
-			std::cerr << "Wrong mode "<< mode << std::endl;
+		audio_channel = argv[2];
+
+		if (mode > 3 || (audio_channel != "m" && audio_channel != "s" && audio_channel != "r")) {
+			std::cerr << "Usage: " << argv[0] << " <mode> [audio channel]" << std::endl;
+			std::cerr << "<mode> is a value from 0-3 and [audio channel] can be 'm' for mono, 's' for stereo, or 'r' for RDS." << std::endl;
 			exit(1);
 		}
-		else {
-			std::cerr << "Usage: "<< argv[0] <<std::endl;
-			std::cerr << "or " << std::endl;
-			std::cerr << "Usage: "<< argv[0] << "<mode>" << std::endl;
-			std::cerr << "\t\t <mode> is a value from 0 to 3" << std::endl;
-			exit(1);
-			}
-		}
-	} */
-	
-	int main(int argc, char* argv[])
+		std::cerr << "Operating in mode " << mode << " with audio channel " << audio_channel << std::endl;
+	} else {
+		std::cerr << "Usage: " << argv[0] << " <mode> [audio channel]" << std::endl;
+		std::cerr << "<mode> is a value from 0-3 and [audio channel] can be 'm' for mono, 's' for stereo, or 'r' for RDS." << std::endl;
+		exit(1);
+	} *///above implements the 3 arguments that will be given ./project <mode> [audio_channel]
+
+int main(int argc, char *argv[])
 {
 
 	// Default mode 0
@@ -98,8 +88,9 @@ void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::ve
 		std::cerr << "\t\t <mode> is a value from 0-3" << argv[0] << std::endl;
 		exit(1);
 	}
-
 	std::cerr << "Operating in mode " << mode << std::endl;
+
+
 	float RF_Fs = 2400e3;
 	float RF_Fc = 100e3;
 	float IF_Fs = 240e3;
@@ -115,7 +106,7 @@ void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::ve
 	std::vector<float> demod;
 	float prev_i = 0.0; 
 	float prev_q =0.0;
-	std::vector<float> mono_out;
+	std::vector<float> processed_data;
 
 	int BLOCK_SIZE = 1024 * rf_decim * audio_decim * 2;
 
@@ -133,7 +124,14 @@ void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::ve
 		conv_ds_slow(filt_q, q_data, RF_h, rf_decim);
 		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
 		impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
-		conv_ds_slow(mono_out, demod, IF_h, audio_decim);
+		conv_ds_slow(processed_data, demod, IF_h, audio_decim);
+
+		std::vector<short int> audio_data(BLOCK_SIZE);
+		for (unsigned int k = 0; k < processed_data.size(); k++){
+			if (std::isnan(processed_data[k])) audio_data[k] = 0;
+			else audio_data[k] = static_cast<short int> (processed_data[k]*16384);
+		}
+		fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 	}
 	return 0;
