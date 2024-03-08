@@ -1,27 +1,11 @@
-/*
-Comp Eng 3DY4 (Computer Systems Integration Project)
 
-Copyright by Nicola Nicolici
-Department of Electrical and Computer Engineering
-McMaster University
-Ontario, Canada
-*/
-
-#include "dy4.h"
-#include "filter.h"
-#include "fourier.h"
-#include "genfunc.h"
-#include "iofunc.h"
-#include "logfunc.h"
-#include "RFfront.h"
 
 // -------------------------- RF FRONT END ------------------------------
 
 
 
 
-void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
-	std::vector<char> raw_data(num_samples);/*
+/*
 Comp Eng 3DY4 (Computer Systems Integration Project)
 
 Copyright by Nicola Nicolici
