@@ -26,10 +26,16 @@ Ontario, Canada
 
 
 
-
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
+	std::vector<char> raw_data(num_samples);
+	std::cin.read(reinterpret_cast<char*>(&raw_data[0]), num_samples*sizeof(char));
+	for (int k=0; k<(int)num_samples; k++){
+		block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0);
+	}
+}
 
 	
-int main(int argc, char* argv[])
+/* int main(int argc, char* argv[])
 {
 
 	int mode = 0;
@@ -68,8 +74,32 @@ int main(int argc, char* argv[])
 			exit(1);
 			}
 		}
-	}
+	} */
 	
+	int main(int argc, char* argv[])
+{
+
+	// Default mode 0
+	int mode = 0;
+
+	// Mode Selection
+	if (argc<2){
+		std::cerr << "Operating in default mode 0" << std::endl;
+	} else if (argc==2){
+		mode=atoi(argv[1]);
+		if (mode>3){
+			std::cerr << "Wrong mode " << mode << std::endl;
+			exit(1);
+		}
+	} else {
+		std::cerr << "Usage: " << argv[0] << std::endl;
+		std::cerr << "or " << std::endl;
+		std::cerr << "Usage: " << argv[0] << " <mode>" << std::endl;
+		std::cerr << "\t\t <mode> is a value from 0-3" << argv[0] << std::endl;
+		exit(1);
+	}
+
+	std::cerr << "Operating in mode " << mode << std::endl;
 	float RF_Fs = 2400e3;
 	float RF_Fc = 100e3;
 	float IF_Fs = 240e3;
