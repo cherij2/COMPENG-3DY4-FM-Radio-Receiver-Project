@@ -31,28 +31,30 @@ void upsample(const std::vector<int> &input_signal, std::vector<int> &output_sig
         output_signal[j] = input_signal[i];
     }
 }
-void conv_h(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h){
-    y.clear(); y.resize(x.size()+h.size());
-    for(int n = 0; n<y.size(); n++){
-        for(int k=0;k<(int)h.size(); k++){
-            if (((n-k)>= 0) && (n-k)<(int)x.size())
-            y[n] += h[k]*x[n-k];
+void conv_h(std::vector<float>& y, const std::vector<float>& x, const std::vector<float>& h) {
+    y.clear(); y.resize(x.size() + h.size());
+    for (int n = 0; n < (int)y.size(); n++) {
+        for (int k = 0; k < (int)h.size(); k++) {
+            if (((n - k) >= 0) && ((n - k) < x.size())) {
+                y[n] += h[k] * x[n - k];
+            }
         }
     }
 }
-void conv_ds_slow(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, int ds){
+
+void conv_ds_slow(std::vector<float>& y, const std::vector<float>& x, const std::vector<float>& h, int ds) {
     conv_h(y, x, h);
-    for(int n=0; n<int(y.size()/ds);n++){
-        y[n] = y[n*ds];
+    for (int n = 0; n < int(y.size() / ds); n++) {
+        y[n] = y[n * ds];
     }
-    y.resize(int(y.size()/ds));
+    y.resize(int(y.size() / ds));
     y.shrink_to_fit();
-    }
-    
+}
+
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
 {
-    I.clear(); I.resize(audio_data.size()/2);
-    Q.clear(); Q.resize(audio_data.size()/2);
+    I.clear(); //I.resize(audio_data.size()/2);
+    Q.clear(); //Q.resize(audio_data.size(/2);
     for (int i = 0; i < (int)audio_data.size(); i++)
     {
         if (i % 2 == 0)
@@ -68,10 +70,16 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
     current_phase.clear(); current_phase.resize(I.size());
     for (int i = 0; i < I.size(); i++){
 
+        float denominator = (std::pow(I[i], 2) + std::pow(Q[i], 2));
         float deriv_I = I[i] - I_prev;
         float deriv_Q = Q[i] - Q_prev;
-        
-        current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0)? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / (std::pow(I[i], 2) + std::pow(Q[i], 2));
+        if (I[i] == 0 || Q[i] == 0 || denominator == 0){
+            current_phase[i] = 0;
+        }
+        else {
+            current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0)? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+
+        } 
         I_prev = I[i];
         Q_prev = Q[i];   
     }//if I or Q at that index = 0 make that demod element at that index  = 0
