@@ -107,8 +107,8 @@ int main(int argc, char *argv[])
 	float prev_i = 0.0; 
 	float prev_q =0.0;
 
-	int BLOCK_SIZE = 1024 * rf_decim * audio_decim * 2;
-	std::vector<float> processed_data(BLOCK_SIZE);
+	int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
+	std::vector<float> processed_data;
 	
 	for (unsigned int block_id = 0;  ; block_id++) {
 		std::vector<float> block_data(BLOCK_SIZE);
@@ -117,17 +117,24 @@ int main(int argc, char *argv[])
 			std::cerr << "End of input stream reached" << std::endl;
 			exit(1);
 		}
-		std::cerr << "Read block " << block_id << std::endl;
+		//std::cerr << "Read block " << block_id << std::endl;
+		
+
 		split_audio_iq(block_data, i_data, q_data);
 		impulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h);
 		conv_ds_slow(filt_i, i_data, RF_h, rf_decim);
 		conv_ds_slow(filt_q, q_data, RF_h, rf_decim);
 		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+		std::cerr << "I data size: "<< i_data.size() << std::endl;
+		std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
+		std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
+		
 		impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
 		conv_ds_slow(processed_data, demod, IF_h, audio_decim);
+		std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
 
 
-		std::vector<short int> audio_data(BLOCK_SIZE);
+		std::vector<short int> audio_data(processed_data.size());
 		for (unsigned int k = 0; k < processed_data.size(); k++){
 			if (std::isnan(processed_data[k])) audio_data[k] = 0;
 			else audio_data[k] = static_cast<short int> (processed_data[k]*16384);
