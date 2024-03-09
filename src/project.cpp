@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 	float RF_Fc = 100e3;
 	float IF_Fs = 240e3;
 	float mono_Fc = 16e3;
-	float num_Taps = 101;
+	float num_Taps = 151;
 	int rf_decim = 10;
 	int audio_decim = 5;
 	std::vector<float> RF_h;
