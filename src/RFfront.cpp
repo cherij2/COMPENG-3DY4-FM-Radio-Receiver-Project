@@ -11,7 +11,7 @@ void downsample(const std::vector<int> &input_signal, std::vector<int> &output_s
     output_signal.resize(downsampled_size);
 
     // Perform the downsampling
-    for (int i = 0, j = 0; i < input_signal.size(); i += decimation_factor, j++)
+    for (int i = 0, j = 0; i < (int)input_signal.size(); i += decimation_factor, j++)
     {
         output_signal[j] = input_signal[i];
     }
@@ -26,24 +26,52 @@ void upsample(const std::vector<int> &input_signal, std::vector<int> &output_sig
     output_signal.resize(upsampled_size);
 
     // Perform the downsampling
-    for (int i = 0, j = 0; i < input_signal.size(); i += expansion_factor, j++)
+    for (int i = 0, j = 0; i < (int)input_signal.size(); i += expansion_factor, j++)
     {
         output_signal[j] = input_signal[i];
     }
 }
+
+void blockConvolutionFIR(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, std::vector<float> &state)
+{				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
+	yb.clear(); // this implementation copies the python code
+	yb.resize(xb.size(), 0.0);
+
+	for (int n = 0; n < (int)xb.size(); n++)
+	{
+		for (int k = 0; k < (int)h.size(); k++)
+		{
+			if (n - k >= 0)
+			{
+				yb[n] += h[k] * xb[n - k];
+			}
+			else
+			{
+				yb[n] += h[k] * state[h.size() - 1 + (n - k)]; //
+			}
+		}
+	}
+
+	for (int i = 0; i < (int)h.size() - 1; i++) // updates the state at the end for the next block to be used
+	{
+		state[i] = xb[xb.size() - h.size() + 1 + i];
+	}
+}
+
 void conv_h(std::vector<float>& y, const std::vector<float>& x, const std::vector<float>& h) {
     y.clear(); y.resize(x.size() + h.size());
     for (int n = 0; n < (int)y.size(); n++) {
         for (int k = 0; k < (int)h.size(); k++) {
-            if (((n - k) >= 0) && ((n - k) < x.size())) {
+            if (((n - k) >= 0) && ((n - k) < (int)x.size())) {
                 y[n] += h[k] * x[n - k];
             }
         }
     }
 }
 
-void conv_ds_slow(std::vector<float>& y, const std::vector<float>& x, const std::vector<float>& h, int ds) {
-    conv_h(y, x, h);
+void conv_ds_slow(std::vector<float>& y, const std::vector<float>& x, const std::vector<float>& h, int ds, std::vector<float> &state) {
+    //conv_h(y, x, h);
+    blockConvolutionFIR(y, x, h, state);
     for (int n = 0; n < int(y.size() / ds); n++) {
         y[n] = y[n * ds];
     }
@@ -68,7 +96,7 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
 {
 
     current_phase.clear(); current_phase.resize(I.size());
-    for (int i = 0; i < I.size(); i++){
+    for (int i = 0; i < (int)I.size(); i++){
 
         float denominator = (std::pow(I[i], 2) + std::pow(Q[i], 2));
         float deriv_I = I[i] - I_prev;

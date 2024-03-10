@@ -104,6 +104,9 @@ int main(int argc, char *argv[])
 	std::vector<float> i_data, q_data;
 	std::vector<float> filt_i, filt_q;
 	std::vector<float> demod;
+	std::vector<float> state_i(num_Taps, 0);
+	std::vector<float> state_q(num_Taps, 0);
+	std::vector<float> state_mono(num_Taps, 0);
 	float prev_i = 0.0; 
 	float prev_q =0.0;
 
@@ -121,16 +124,26 @@ int main(int argc, char *argv[])
 		
 
 		split_audio_iq(block_data, i_data, q_data);
+
+		std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
+		std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
 		impulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h);
-		conv_ds_slow(filt_i, i_data, RF_h, rf_decim);
-		conv_ds_slow(filt_q, q_data, RF_h, rf_decim);
+
+		conv_ds_slow(filt_i, i_data, RF_h, rf_decim, state_i);
+		conv_ds_slow(filt_q, q_data, RF_h, rf_decim, state_q);
 		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+
 		std::cerr << "I data size: "<< i_data.size() << std::endl;
+		std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
 		std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
 		std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 		
 		impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
-		conv_ds_slow(processed_data, demod, IF_h, audio_decim);
+
+		std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
+		std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
+		conv_ds_slow(processed_data, demod, IF_h, audio_decim, state_mono);
+
 		std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
 
 
