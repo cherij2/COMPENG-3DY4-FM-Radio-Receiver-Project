@@ -116,6 +116,24 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
     state = new_state;
 }
 
+void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us std::vector<float> &state){
+    yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
+
+    int phase = 0;
+    for(int n = 0; n < (int)yb.size(); n++){
+        phase = (n*ds)%us;
+        for (int k = phase; k < h.size(); k+= us){
+            int dx = (n-k)/us;
+            if(ds >= 0){
+                y[n] += h[k]*x[dx];
+            }else{
+                y[n] += h[k]*state[h.size()-1+dx];
+            }
+        }
+    }
+    std::vector<float> new_state(&xb[xb.size()-h.size()+1], &xb[xb.size()]);
+    state = new_state;     
+}
 
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
 {
