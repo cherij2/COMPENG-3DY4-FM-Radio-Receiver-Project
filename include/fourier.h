@@ -14,6 +14,7 @@ Ontario, Canada
 #include <vector>
 #include <complex>
 #include <cmath>
+#include <chrono>
 
 // declaration of a function prototypes
 void DFT(const std::vector<float> &,

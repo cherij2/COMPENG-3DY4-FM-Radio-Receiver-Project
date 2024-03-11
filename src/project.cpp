@@ -112,16 +112,18 @@ int main(int argc, char *argv[])
 
 	int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
 	std::vector<float> processed_data;
-	
+	auto final = 0;
+	auto full_signal_start = std::chrono::high_resolution_clock::now();
 	for (unsigned int block_id = 0;  ; block_id++) {
 		std::vector<float> block_data(BLOCK_SIZE);
 		readStdinBlockData(BLOCK_SIZE, block_id, block_data);
 		if((std::cin.rdstate()) != 0) {
 			std::cerr << "End of input stream reached" << std::endl;
+			std::cerr << "Final run time  = "<<final<<std::endl;
 			exit(1);
 		}
 		//std::cerr << "Read block " << block_id << std::endl;
-		
+		auto block_start = std::chrono::high_resolution_clock::now();
 
 		split_audio_iq(block_data, i_data, q_data);
 
@@ -129,8 +131,8 @@ int main(int argc, char *argv[])
 		std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
 		impulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h);
 
-		// conv_ds_slow(filt_i, i_data, RF_h, rf_decim, state_i);
-		// conv_ds_slow(filt_q, q_data, RF_h, rf_decim, state_q);
+		//conv_ds_slow(filt_i, i_data, RF_h, rf_decim, state_i);
+		//conv_ds_slow(filt_q, q_data, RF_h, rf_decim, state_q);
 		conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
 		conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
 		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
@@ -146,8 +148,12 @@ int main(int argc, char *argv[])
 		std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
 		//conv_ds_slow(processed_data, demod, IF_h, audio_decim, state_mono);
 		conv_ds(processed_data, demod, IF_h, audio_decim, state_mono);
-		std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
 
+		std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
+		auto block_end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> block_time = block_end - block_start;
+		std::cerr << "Block: "<< block_id<< " has runtime: "<<block_time.count()<<std::endl;
+		final += block_time.count();
 
 		std::vector<short int> audio_data(processed_data.size());
 		for (unsigned int k = 0; k < processed_data.size(); k++){
@@ -162,5 +168,9 @@ int main(int argc, char *argv[])
 	
 
 	}
+	auto full_signal_end = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> full_signal_time = full_signal_end - full_signal_start;
+	std::cerr<<"Full signal took: "<<full_signal_time.count();
+
 	return 0;
 }

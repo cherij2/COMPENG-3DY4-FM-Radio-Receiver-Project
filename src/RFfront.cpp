@@ -108,10 +108,12 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 		}
 	}
 
-	for (int i = 0; i < (int)h.size() - 1; i++) // updates the state at the end for the next block to be used
-    {
-		state[i] = xb[xb.size() - h.size() + 1 + i];
-	}
+	// for (int i = 0; i < (int)h.size() - 1; i++) // updates the state at the end for the next block to be used
+    // {
+	// 	state[i] = xb[xb.size() - h.size() + 1 + i];
+	// }
+    std::vector<float> new_state(&xb[xb.size()-h.size()+1], &xb[xb.size()]);
+    state = new_state;
 }
 
 
