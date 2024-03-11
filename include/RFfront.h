@@ -19,4 +19,6 @@ void conv_h(std::vector<float> &y, const std::vector<float> &x, const std::vecto
 
 void conv_ds_slow(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h, int ds, std::vector<float> &state);
 
+void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state);
+
 #endif

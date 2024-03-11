@@ -79,6 +79,42 @@ void conv_ds_slow(std::vector<float>& y, const std::vector<float>& x, const std:
     y.shrink_to_fit();
 }
 
+void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state){				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
+	yb.clear(); // this implementation copies the python code
+	yb.resize(xb.size()/ds, 0.0);
+
+	for (int n = 0; n < (int)xb.size(); n++)
+	{
+        float sum = 0.0;
+		for (int k = 0; k < (int)h.size(); k++)
+		{
+			if (n - k >= 0)
+			{
+				sum += h[k] * xb[n - k];
+			}
+			else
+			{
+				sum += h[k] * state[h.size() - 1 + (n - k)]; //
+			}
+
+            if(n%ds == 0){
+                if(n == 0){
+                    yb[0] = sum;
+                }
+                else{
+                    yb[n/ds] = sum;
+                }
+            }
+		}
+	}
+
+	for (int i = 0; i < (int)h.size() - 1; i++) // updates the state at the end for the next block to be used
+    {
+		state[i] = xb[xb.size() - h.size() + 1 + i];
+	}
+}
+
+
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
 {
     I.clear(); //I.resize(audio_data.size()/2);
