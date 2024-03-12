@@ -94,7 +94,7 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 			}
 			else
 			{
-				sum += h[k] * state[h.size() - 1 + (n - k)]; //
+				sum += h[k] * state[state.size() - 1 + (n - k)]; //
 			}
 
             if(n%ds == 0){
@@ -109,7 +109,9 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 	}
     std::vector<float> new_state(&xb[xb.size()-h.size()+1], &xb[xb.size()]);
     state = new_state;
+    std::cerr<<"new_state: "<<new_state.size()<<std::endl;
 }
+
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
@@ -122,11 +124,11 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
             if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
             }else{
-                yb[n] += h[k]*state[state.size()-1+dx];
+                 yb[n] += h[k]*state[h.size()-1+dx];
             }
         }
     }
-    std::vector<float> new_state(&xb[xb.size()-state.size()+1], &xb[xb.size()]);
+    std::vector<float> new_state(&xb[xb.size()-h.size()], &xb[xb.size()]);
     state = new_state;
 }
 
@@ -152,13 +154,14 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
         float denominator = (std::pow(I[i], 2) + std::pow(Q[i], 2));
         float deriv_I = I[i] - I_prev;
         float deriv_Q = Q[i] - Q_prev;
-        if (I[i] == 0 || Q[i] == 0 || denominator == 0){
-            current_phase[i] = 0;
-        }
-        else {
-            current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0)? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+        // if (I[i] == 0 || Q[i] == 0 || denominator == 0){
+        //     current_phase[i] = 0;
+        // }
+        // else {
+        current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0) ? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
 
-        } 
+        // } 
+        //std::cerr<<" FM demod at index: "<<i<<" FM demod value: "<<current_phase[i]<<std::endl;
         I_prev = I[i];
         Q_prev = Q[i];   
     }//if I or Q at that index = 0 make that demod element at that index  = 0
