@@ -70,8 +70,8 @@ void conv_h(std::vector<float>& y, const std::vector<float>& x, const std::vecto
 }
 
 void conv_ds_slow(std::vector<float>& y, const std::vector<float>& x, const std::vector<float>& h, int ds, std::vector<float> &state) {
-    //conv_h(y, x, h);
-    blockConvolutionFIR(y, x, h, state);
+    conv_h(y, x, h);
+    //blockConvolutionFIR(y, x, h, state);
     for (int n = 0; n < int(y.size() / ds); n++) {
         y[n] = y[n * ds];
     }
@@ -107,32 +107,27 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
             }
 		}
 	}
-
-	// for (int i = 0; i < (int)h.size() - 1; i++) // updates the state at the end for the next block to be used
-    // {
-	// 	state[i] = xb[xb.size() - h.size() + 1 + i];
-	// }
     std::vector<float> new_state(&xb[xb.size()-h.size()+1], &xb[xb.size()]);
     state = new_state;
 }
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
-
+    //fast implementation from lecture notes
     int phase = 0;
     for(int n = 0; n < (int)yb.size(); n++){
         phase = (n*ds)%us;
-        for (int k = phase; k < h.size(); k+= us){
-            int dx = (n-k)/us;
+        for (int k = phase; k < (int)h.size(); k+= us){
+            int dx = (ds*n-k)/us;
             if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
             }else{
-                yb[n] += h[k]*state[h.size()-1+dx];
+                yb[n] += h[k]*state[state.size()-1+dx];
             }
         }
     }
-    std::vector<float> new_state(&xb[xb.size()-h.size()+1], &xb[xb.size()]);
-    state = new_state;     
+    std::vector<float> new_state(&xb[xb.size()-state.size()+1], &xb[xb.size()]);
+    state = new_state;
 }
 
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
