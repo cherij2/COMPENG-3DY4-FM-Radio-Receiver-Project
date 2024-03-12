@@ -30,6 +30,23 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
 	}
 }
 
+void bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h) {
+	norm_center = ((Fe+Fb)/2)/(Fs/2)
+	norm_pass = (Fe-Fb)/(Fs/2)
+	
+	for(int i = 0; i < num_taps - 1; i++) {
+		if(i == ((num_taps-1)/2)) {
+			h[i] = norm_pass;
+		} else {
+			h[i] = norm_pass * ((sin(PI*(norm_pass/2)*(i-(num_taps-1)/2)))/(PI*(norm_pass/2)*(i-(num_taps-1)/2)));
+		}
+		
+		h[i] = h[i]*cos((i-(num_taps-1)/2)*PI*norm_center);
+		h[i] = h[i]*sin(i*PI/num_taps)*sin(i*PI/num_taps);
+	}
+}
+
+
 void gainimpulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h, int U){
 	// allocate memory for the impulse response
 	h.clear();
