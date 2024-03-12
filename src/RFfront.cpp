@@ -124,7 +124,7 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
         phase = (n*ds)%us;
         for (int k = phase; k < h.size(); k+= us){
             int dx = (n-k)/us;
-            if(ds >= 0){
+            if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
             }else{
                 yb[n] += h[k]*state[h.size()-1+dx];
