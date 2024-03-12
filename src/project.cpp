@@ -90,29 +90,32 @@ int main(int argc, char *argv[])
 	}
 	std::cerr << "Operating in mode " << mode << std::endl;
 
-	if (mode == 1){
+	float RF_Fs = 2400e3;
+	float IF_Fs = 240e3;
+	float rf_decim = 10;
+	float audio_decim = 5;
+	int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
+	if (mode == 1){m
 		float RF_Fs = 960e3;
 		float IF_Fs = 320e3;
 		float rf_decim = 3;
 		float audio_decim = 8;
-		int BLOCK_SIZE
+		int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
 	} else if(mode == 2){
 		float RF_Fs = 2400e3;
 		float IF_Fs = 240e3;
 		float rf_decim = 10;
 		float audio_decim = 800;
 		float audio_expan = 147;
+		int BLOCK_SIZE = 1024*rf_decim*audio_decim/audio_expan*2;
 	} else if(mode == 3){
 		float RF_Fs = 960e3;
 		float IF_Fs = 120e3;
 		float rf_decim = 8;
 		float audio_decim = 400;
 		float audio_expan = 147;
-	} else{
-		float RF_Fs = 2400e3;
-		float IF_Fs = 240e3;
-		float rf_decim = 10;
-		float audio_decim = 5;
+		int BLOCK_SIZE = 1024*rf_decim*audio_decim/audio_expan*2;
+		
 	}
 	//float RF_Fs = 2400e3;
 	float RF_Fc = 100e3;
@@ -132,7 +135,6 @@ int main(int argc, char *argv[])
 	std::vector<float> demod;
 	std::vector<float> state_i(num_Taps, 0);
 	std::vector<float> state_q(num_Taps, 0);
-	std::vector<float> state_mono(num_Taps*audio_expan, 0);
 	float prev_i = 0.0; 
 	float prev_q =0.0;
 
@@ -169,9 +171,11 @@ int main(int argc, char *argv[])
 		std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
 		std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 		if (mode == 2 || mode == 3){
+			std::vector<float> state_mono(num_Taps*audio_expan, 0);
 			gainimpulseResponseLPF(((IF_Fs/rf_decim)*audio_expan), mono_Fc, num_Taps*audio_expan, IF_h, audio_expan);
 			conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
 		} else{
+			std::vector<float> state_mono(num_Taps, 0);
 			impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
 			conv_ds(processed_data, demod, IF_h, audio_decim, state_mono);
 		}
