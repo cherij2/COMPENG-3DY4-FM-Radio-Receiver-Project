@@ -199,8 +199,17 @@ int main(int argc, char *argv[])
 
 
 
+//***********STEREO***********
+// fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
+//bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h)
+std::vector<float> ncoOutp;
+float Fsstereo;
+float targetFrequency;
+float stereoFs;
+float output1BPF
 
-	
+bandPass(18500, 19500, stereoFs, num_Taps, output1BPF);
+
 
 	}
 	auto full_signal_end = std::chrono::high_resolution_clock::now();
