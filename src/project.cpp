@@ -114,9 +114,9 @@ int main(int argc, char *argv[])
 		float rf_decim = 10;
 		float audio_decim = 5;
 	}
-	//float RF_Fs = 2400e3;
+	float RF_Fs = 2400e3;
 	float RF_Fc = 100e3;
-	//float IF_Fs = 240e3;
+	float IF_Fs = 240e3;
 	float mono_Fc = 16e3;
 	float num_Taps = 101;
 	//int rf_decim = 10;
@@ -202,13 +202,36 @@ int main(int argc, char *argv[])
 //***********STEREO***********
 // fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
 //bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h)
-std::vector<float> ncoOutp;
-float Fsstereo;
-float targetFrequency;
+float pilotFb = 18500;
+float pilotFe = 19500;
+float stereoFb = 22000;
+float stereoFe = 54000;
+float pilotFs;
 float stereoFs;
-float output1BPF
+float STnumTaps;
+std::vector<float> pilot_BPF_coeffs;
+std::vector<float> stereo_BPF_coeffs;
+std::vector<float> pilot_filtered;
+std::vector<float> stereo_filtered;
 
-bandPass(18500, 19500, stereoFs, num_Taps, output1BPF);
+float pilot_lockInFreq = 19000;
+std::vector<float> pilot_NCO_outp;
+
+//to get pilot freq
+bandPass(pilotFb, pilotFe, stereoFs, STnumTaps, pilot_BPF_coeffs);
+convolveFIR(pilot_filtered, demod, pilot_BPF_coeffs);
+//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
+
+//to get stereo band freq
+bandPass(stereoFb, stereoFe, stereoFs, STnumTaps, stereo_BPF_coeffs);
+convolveFIR(stereo_filtered, demod, stereo_BPF_coeffs);
+
+//PLL for pilot
+fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs);
+
+
+//figure out how to implement 'state saving' in 
+//finish implementing delay function in filter
 
 
 	}

@@ -30,9 +30,9 @@ void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::ve
 	}
 }
 
-void bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h) {
-	norm_center = ((Fe+Fb)/2)/(Fs/2)
-	norm_pass = (Fe-Fb)/(Fs/2)
+void bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector<float> &h) {
+	float norm_center = ((Fe+Fb)/2)/(Fs/2) ;
+	float norm_pass = (Fe-Fb)/(Fs/2) ; 
 	
 	for(int i = 0; i < num_taps - 1; i++) {
 		if(i == ((num_taps-1)/2)) {
@@ -128,6 +128,15 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
     }
+}
+
+void delayBlock(std::vector<float> input_block, std::vector<float> state_block, std::vector<float> output_block) {
+	int end_outp = input_block.size() - state_block.size();
+	int start_index = input_block.size() - state_block.size();
+
+	output_block.insert(output_block.end(), input_block.begin(), end_outp);
+	state_block.assign(input_block.begin() + start_index, input_block.end());
+
 }
 
 
