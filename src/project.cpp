@@ -148,8 +148,10 @@ int main(int argc, char *argv[])
 
 		//conv_ds_slow(filt_i, i_data, RF_h, rf_decim, state_i);
 		//conv_ds_slow(filt_q, q_data, RF_h, rf_decim, state_q);
-		conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
-		conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
+		// conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
+		// conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
+		conv_ds_fast(filt_i, i_data, RF_h, rf_decim, state_i);
+		conv_ds_fast(filt_q, q_data, RF_h, rf_decim, state_q);
 		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
 
 		std::cerr << "I data size: "<< i_data.size() << std::endl;
@@ -163,7 +165,9 @@ int main(int argc, char *argv[])
 		std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
 		std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
 		//conv_ds_slow(processed_data, demod, IF_h, audio_decim, state_mono);
-		conv_ds(processed_data, demod, IF_h, audio_decim, state_mono);
+		// conv_ds(processed_data, demod, IF_h, audio_decim, state_mono);
+		conv_ds_fast(processed_data, demod, IF_h, audio_decim, state_mono);
+		
 		} else {
 			gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, IF_h, audio_expan);
 			conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
