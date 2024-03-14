@@ -105,8 +105,8 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     // Loop through input samples
     for (size_t k = 0; k < pllIn.size(); ++k) {
         // Phase detector
-        float errorI = pllIn[k] * feedbackI; // In-phase error
-        float errorQ = pllIn[k] * (-feedbackQ); // Quadrature error
+        float errorI = pllIn[k] * feedbackI; // Infreqor
+        float errorQ = pllIn[k] * (-feedbackQ); //freqe error
 
         // Arc tangent phase discriminator
         float errorD = std::atan2(errorQ, errorI);
@@ -119,6 +119,7 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
 
         // Update internal oscillator state
         trigOffset++;
+
         float trigArg = 2 * M_PI * (freq / Fs) * trigOffset + phaseEst;
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
@@ -126,3 +127,11 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     }
 }
 
+void stereoSeperation(float &left, float &right, std::vector<float> mono, std::vector<float> stereo) {
+	//not sure if this is correct :/
+	for(int i = 0; i < stereo.size(); i++) {
+		right = (stereo[i] - mono[i]) / 2;
+		left = (stereo[i] + mono[i]) / 2;
+	}
+	
+}

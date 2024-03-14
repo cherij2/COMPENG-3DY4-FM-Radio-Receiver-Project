@@ -155,7 +155,21 @@ int main(int argc, char *argv[])
 	std::vector<float> stereo_BPF_coeffs;
 	std::vector<float> pilot_filtered;
 	std::vector<float> stereo_filtered;
+	
+	float fc_mixer;
 	std::vector<float> mixer;
+	std::vector<float> mixer_coeffs;
+	std::vector<float> mixer_filtered;
+
+	// impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs);
+	// 	convolveFIR(mixer_filtered, mixer, mixer_coeffs);
+	float fc_allPass = 100000;
+	std::vector<float> allPass_coeffs;
+	std::vector<float> allPass_filtered;
+
+	std::vector<float> right_stereo;
+	std::vector<float> left_stereo;
+
 
 	float pilot_lockInFreq = 19000;
 	std::vector<float> pilot_NCO_outp;
@@ -206,6 +220,8 @@ int main(int argc, char *argv[])
 		std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
 		std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 		
+		
+		
 		//-------------------MONO PATH START------------------------
 		//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
 
@@ -235,19 +251,44 @@ int main(int argc, char *argv[])
 		std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<< "\tstereo_filtered size: "<<stereo_filtered.size()<<std::endl;
 
 
-		mixer.resize(pilot_filtered.size(), 0.0);
-		for(int i = 0; i < pilot_filtered.size(); i++) {
-			mixer[i] = pilot_filtered[i] * stereo_filtered[i];
-
-		}
-		std::cerr<<"Mixer size: "<<mixer.size()<<std::endl;
+		
 
 
 		//PLL for pilot
 		//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
 		fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs, integrator, phaseEst, feedbackI, feedbackQ, trigOffset, errorD, ncoScale, phaseAdjust, normBandwidth);
+
+
+
+		//MIXER
+		mixer.resize(pilot_filtered.size(), 0.0);
+		for(int i = 0; i < pilot_filtered.size(); i++) {
+			mixer[i] = 2 * pilot_filtered[i] * stereo_filtered[i];
+
+		}
+
+
+		//LPF STERO
+		fc_mixer = pilot_lockInFreq / IF_Fs;
+		//void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h)
+		impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs);
+		convolveFIR(mixer_filtered, mixer, mixer_coeffs);
+
+		
+		//RIGHT AND LEFT STEREO
+		right_stereo.resize(mixer.size());
+		left_stereo.resize(mixer.size());
+		for(int i = 0; i < mixer.size(); i++) {
+			//!!!! is equation correct?
+			
+
+			right_stereo[i] = (mixer[i] - processed_data[i]) / 2;
+			left_stereo[i] = (mixer[i] + processed_data[i]) / 2;
+		}
+
 		
 
+		std::cerr<<"Mixer size: "<<mixer.size()<<std::endl;
 
 		//figure out how to implement 'state saving' in 
 		//finish implementing delay function in filter
