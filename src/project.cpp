@@ -197,8 +197,7 @@ int main(int argc, char *argv[])
 		float stereoFe = 54000;
 		float pilotFs;
 		float stereoFs;
-		float STnumTaps;
-		float STnumTaps;
+		float STnumTaps = 101;
 
 		float errorD;
 		float integrator;
@@ -216,12 +215,12 @@ int main(int argc, char *argv[])
 		std::vector<float> pilot_NCO_outp;
 
 		//to get pilot freq
-		bandPass(pilotFb, pilotFe, stereoFs, STnumTaps, pilot_BPF_coeffs);
+		BPFCoeffs(pilotFb, pilotFe, stereoFs, STnumTaps, pilot_BPF_coeffs);
 		convolveFIR(pilot_filtered, demod, pilot_BPF_coeffs);
 		//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 
 		//to get stereo band freq
-		bandPass(stereoFb, stereoFe, stereoFs, STnumTaps, stereo_BPF_coeffs);
+		BPFCoeffs(stereoFb, stereoFe, stereoFs, STnumTaps, stereo_BPF_coeffs);
 		convolveFIR(stereo_filtered, demod, stereo_BPF_coeffs);
 
 		//PLL for pilot
