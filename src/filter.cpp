@@ -71,6 +71,8 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
 
 
 void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector<float> &h) {
+	h.clear();
+	h.resize(num_taps, 0.0);
 	float norm_center = ((Fe+Fb)/2)/(Fs/2) ;
 	float norm_pass = (Fe-Fb)/(Fs/2) ; 
 	
@@ -87,7 +89,7 @@ void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::v
 }
 
 
-void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float &freq, float &Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ, int &trigOffset, float &errorD, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01) {
+void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ, int &trigOffset, float &errorD, float ncoScale, float phaseAdjust, float normBandwidth) {
     // Constants for the loop filter
     const float Cp = 2.666;
     const float Ci = 3.555;

@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 	// DEFAULT VALUES ASSUMING MODE 0
 	int RF_Fs = 2400e3;
 	float RF_Fc = 100e3;
-	int IF_Fs = 240e3;
+	float IF_Fs = 240e3;
 	float mono_Fc;
 	float num_Taps = 101; //if too high of a value takes too long to run
 	unsigned short int rf_decim = 10;
@@ -137,6 +137,34 @@ int main(int argc, char *argv[])
 	std::vector<float> state_q(num_Taps, 0.0);
 	std::vector<float> state_mono(num_Taps, 0.0);
 
+	float pilotFb = 18500;
+	float pilotFe = 19500;
+	float stereoFb = 22000;
+	float stereoFe = 54000;
+
+	float STnumTaps = 101;
+
+	float errorD = 0.0;
+	float integrator = 0.0;
+	float phaseEst = 0.0;
+	float feedbackI = 1.0;
+	float feedbackQ = 0.0;
+	int trigOffset = 0;
+
+	std::vector<float> pilot_BPF_coeffs;
+	std::vector<float> stereo_BPF_coeffs;
+	std::vector<float> pilot_filtered;
+	std::vector<float> stereo_filtered;
+	std::vector<float> mixer;
+
+	float pilot_lockInFreq = 19000;
+	std::vector<float> pilot_NCO_outp;
+	float normBandwidth = 0.01;
+	float phaseAdjust = 0.0;
+	float ncoScale = 2.0;
+	
+	
+	std::cerr<<"TEST";
 	float prev_i = 0.0; 
 	float prev_q =0.0;
 	//LPF COEFFICIENTS FOR FRONT END AND MONO PATH
@@ -191,42 +219,34 @@ int main(int argc, char *argv[])
 		//-------------------STEREO PATH START--------------------------
 		// fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
 		//bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h)
-		float pilotFb = 18500;
-		float pilotFe = 19500;
-		float stereoFb = 22000;
-		float stereoFe = 54000;
-		float pilotFs;
-		float stereoFs;
-		float STnumTaps = 101;
-
-		float errorD;
-		float integrator;
-		float phaseEst;
-		float feedbackI;
-		float feedbackQ;
-		int trigOffset;
-
-		std::vector<float> pilot_BPF_coeffs;
-		std::vector<float> stereo_BPF_coeffs;
-		std::vector<float> pilot_filtered;
-		std::vector<float> stereo_filtered;
-
-		float pilot_lockInFreq = 19000;
-		std::vector<float> pilot_NCO_outp;
+		
 
 		//to get pilot freq
-		BPFCoeffs(pilotFb, pilotFe, stereoFs, STnumTaps, pilot_BPF_coeffs);
+		BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 		convolveFIR(pilot_filtered, demod, pilot_BPF_coeffs);
+	
 		//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 
 		//to get stereo band freq
-		BPFCoeffs(stereoFb, stereoFe, stereoFs, STnumTaps, stereo_BPF_coeffs);
+		BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
 		convolveFIR(stereo_filtered, demod, stereo_BPF_coeffs);
+
+		std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
+		std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<< "\tstereo_filtered size: "<<stereo_filtered.size()<<std::endl;
+
+
+		mixer.resize(pilot_filtered.size(), 0.0);
+		for(int i = 0; i < pilot_filtered.size(); i++) {
+			mixer[i] = pilot_filtered[i] * stereo_filtered[i];
+
+		}
+		std::cerr<<"Mixer size: "<<mixer.size()<<std::endl;
+
 
 		//PLL for pilot
 		//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-		fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs, integrator, phaseEst, feedbackI, feedbackQ, trigOffset, errorD);
-
+		fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs, integrator, phaseEst, feedbackI, feedbackQ, trigOffset, errorD, ncoScale, phaseAdjust, normBandwidth);
+		
 
 
 		//figure out how to implement 'state saving' in 
