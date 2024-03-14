@@ -68,3 +68,59 @@ void convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::
 	}
 	// the rest of the code in this function is to be completed by yo	// based on your understanding and the Python code from the first lab
 }
+
+
+void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector<float> &h) {
+	float norm_center = ((Fe+Fb)/2)/(Fs/2) ;
+	float norm_pass = (Fe-Fb)/(Fs/2) ; 
+	
+	for(int i = 0; i < num_taps - 1; i++) {
+		if(i == ((num_taps-1)/2)) {
+			h[i] = norm_pass;
+		} else {
+			h[i] = norm_pass * ((sin(PI*(norm_pass/2)*(i-(num_taps-1)/2)))/(PI*(norm_pass/2)*(i-(num_taps-1)/2)));
+		}
+		
+		h[i] = h[i]*cos((i-(num_taps-1)/2)*PI*norm_center);
+		h[i] = h[i]*sin(i*PI/num_taps)*sin(i*PI/num_taps);
+	}
+}
+
+
+void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float &freq, float &Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ, int &trigOffset, float &errorD, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01) {
+    // Constants for the loop filter
+    const float Cp = 2.666;
+    const float Ci = 3.555;
+
+    // Calculate gains
+    const float Kp = normBandwidth * Cp;
+    const float Ki = normBandwidth * normBandwidth * Ci;
+
+    // Resize and initialize output vector
+    ncoOut.resize(pllIn.size() + 1);
+    ncoOut[0] = 1.0;
+
+    // Loop through input samples
+    for (size_t k = 0; k < pllIn.size(); ++k) {
+        // Phase detector
+        float errorI = pllIn[k] * feedbackI; // In-phase error
+        float errorQ = pllIn[k] * (-feedbackQ); // Quadrature error
+
+        // Arc tangent phase discriminator
+        float errorD = std::atan2(errorQ, errorI);
+
+        // Loop filter
+        integrator += Ki * errorD;
+
+        // Update phase estimate
+        phaseEst += Kp * errorD + integrator;
+
+        // Update internal oscillator state
+        trigOffset++;
+        float trigArg = 2 * M_PI * (freq / Fs) * trigOffset + phaseEst;
+        feedbackI = std::cos(trigArg);
+        feedbackQ = std::sin(trigArg);
+        ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
+    }
+}
+

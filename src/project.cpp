@@ -188,6 +188,57 @@ int main(int argc, char *argv[])
 		
 		//-------------------MONO PATH END--------------------------
 
+		//-------------------STEREO PATH START--------------------------
+		// fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
+		//bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h)
+		float pilotFb = 18500;
+		float pilotFe = 19500;
+		float stereoFb = 22000;
+		float stereoFe = 54000;
+		float pilotFs;
+		float stereoFs;
+		float STnumTaps;
+		float STnumTaps;
+
+		float errorD;
+		float integrator;
+		float phaseEst;
+		float feedbackI;
+		float feedbackQ;
+		int trigOffset;
+
+		std::vector<float> pilot_BPF_coeffs;
+		std::vector<float> stereo_BPF_coeffs;
+		std::vector<float> pilot_filtered;
+		std::vector<float> stereo_filtered;
+
+		float pilot_lockInFreq = 19000;
+		std::vector<float> pilot_NCO_outp;
+
+		//to get pilot freq
+		bandPass(pilotFb, pilotFe, stereoFs, STnumTaps, pilot_BPF_coeffs);
+		convolveFIR(pilot_filtered, demod, pilot_BPF_coeffs);
+		//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
+
+		//to get stereo band freq
+		bandPass(stereoFb, stereoFe, stereoFs, STnumTaps, stereo_BPF_coeffs);
+		convolveFIR(stereo_filtered, demod, stereo_BPF_coeffs);
+
+		//PLL for pilot
+		//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
+		fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs, integrator, phaseEst, feedbackI, feedbackQ, trigOffset, errorD);
+
+
+
+		//figure out how to implement 'state saving' in 
+		//finish implementing delay function in filter
+
+
+
+
+		//-------------------STEREO PATH END--------------------------
+
+
 		std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
 		
 		//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
