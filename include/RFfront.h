@@ -23,4 +23,6 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state);
 
+void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state);
+
 #endif

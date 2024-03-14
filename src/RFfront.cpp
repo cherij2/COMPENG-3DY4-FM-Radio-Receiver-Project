@@ -111,6 +111,30 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
     state = new_state;
     std::cerr<<"new_state of "<<new_state.size()<<std::endl;
 }
+void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state){				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
+	yb.clear(); // this implementation copies the python code
+	yb.resize(xb.size()/ds, 0.0);
+
+	for (int n = 0; n < (int)yb.size(); n++)
+	{
+        float sum = 0.0;
+		for (int k = 0; k < (int)h.size(); k++)
+		{
+			if (ds*n - k >= 0)
+			{
+				yb[n] += h[k] * xb[ds*n - k];
+			}
+			else
+			{
+				yb[n] += h[k] * state[state.size() - 1 + (ds*n - k)]; //
+			}
+
+		}
+	}
+    std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
+    state = new_state;
+    std::cerr<<"new_state: "<<new_state.size()<<std::endl;
+}
 
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
