@@ -109,31 +109,32 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 	}
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
     state = new_state;
-    std::cerr<<"new_state: "<<new_state.size()<<std::endl;
+    std::cerr<<"new_state of "<<new_state.size()<<std::endl;
 }
 
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
     //fast implementation from lecture notes
-    int phase = 0;
+    std::cerr<< "yb: "<<yb.size()<<" xb size: "<<xb.size()<<" h size: "<<h.size()<<std::endl;
+    
     for(int n = 0; n < (int)yb.size(); n++){
-        phase = (n*ds)%us; // phase changes when n is incremented in our case
-        int x_index = (ds*n-phase)/us;
-        int state_index = (n*ds-phase)/us;
+        int phase = (n*ds)%us; // phase changes when n is incremented in our case
         for (int k = phase; k < (int)h.size(); k+= us){
-            int dx = (ds*n-k)/us;
-            int x_index = (ds*n-phase)/us;
+            int dx = (ds*n-k)/us; //when n = 1, dx = 2, 
+            
             if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
                 
             }else{
-                 yb[n] += h[k]*state[state.size()+x_index];
+                 yb[n] += h[k]*state[state.size() - 1 +dx];
                  
-            }x_index--;
+            }
         }
     }
+    std::cerr<< "resampling state size = "<<state.size()<<std::endl;
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
+    std::cerr<<"new_state size: "<<new_state.size()<<std::endl;
     state = new_state;
 }
 

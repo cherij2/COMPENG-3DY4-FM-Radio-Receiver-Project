@@ -22,7 +22,6 @@ Ontario, Canada
 #include "logfunc.h"
 #include "RFfront.h"
 
-// -------------------------- RF FRONT END ------------------------------
 
 
 
@@ -90,107 +89,124 @@ int main(int argc, char *argv[])
 	}
 	std::cerr << "Operating in mode " << mode << std::endl;
 
-
-	float RF_Fs = 2400e3;
+	// DEFAULT VALUES ASSUMING MODE 0
+	int RF_Fs = 2400e3;
 	float RF_Fc = 100e3;
-	float IF_Fs = 240e3;
-	float mono_Fc = 16e3;
-	float num_Taps = 151;
-	int rf_decim = 10;
-	int audio_decim = 5;
-	int audio_expan;
+	int IF_Fs = 240e3;
+	float mono_Fc;
+	float num_Taps = 101; //if too high of a value takes too long to run
+	unsigned short int rf_decim = 10;
+	float audio_decim = 5;
+	float audio_expan = 1;
 	int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
-	if (mode == 1){
+
+	//MODE SELECT 
+	if (mode == 1){ //only downsampling in this mode
 		RF_Fs = 960e3;
 		IF_Fs = 320e3;
 		rf_decim = 3;
 		audio_decim = 8;
-	} else if (mode == 2){
+		audio_expan = 1;
+		BLOCK_SIZE = 1500*audio_decim*rf_decim*2;
+	} else if (mode == 2){ //resampling needed in this mode
 		RF_Fs = 2400e3;
 		IF_Fs = 240e3;
 		rf_decim = 10;
 		audio_decim = 800;
 		audio_expan = 147;
-		BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
+		BLOCK_SIZE = audio_decim*audio_expan;
+	} else if(mode == 3){ //resampling needed in this mode
+		RF_Fs = 960e3;
+		IF_Fs = 120e3;
+		rf_decim = 8;
+		audio_decim = 400;
+		audio_expan = 147;
+		BLOCK_SIZE = 15*audio_decim*rf_decim*2;
 	}
+	std::cerr<<"audio expan: "<<audio_expan<<" audio decim: "<<audio_decim<<std::endl;
+	std::cerr<<"min between these two: " <<(audio_expan/audio_decim)<<" "<<(IF_Fs/2)<<" and this valie: "<<IF_Fs/2<<std::endl;
+	mono_Fc = ((std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) < 16000) ? (std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) : 16000.0;
+	
 	std::vector<float> RF_h;
 	std::vector<float> IF_h;
 	
 	std::vector<float> i_data, q_data;
 	std::vector<float> filt_i, filt_q;
 	std::vector<float> demod;
-	std::vector<float> state_i(num_Taps, 0);
-	std::vector<float> state_q(num_Taps, 0);
-	std::vector<float> state_mono(num_Taps, 0);
+	std::vector<float> state_i(num_Taps, 0.0);
+	std::vector<float> state_q(num_Taps, 0.0);
+	std::vector<float> state_mono(num_Taps, 0.0);
+
 	float prev_i = 0.0; 
 	float prev_q =0.0;
-
-//	int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
+	//LPF COEFFICIENTS FOR FRONT END AND MONO PATH
+	gainimpulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h, audio_expan); //FRONT END 
+	gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, IF_h, audio_expan);//MONO PATH
+	
 	std::vector<float> processed_data;
-	auto final = 0;
+	auto final = 0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	auto full_signal_start = std::chrono::high_resolution_clock::now();
 	for (unsigned int block_id = 0;  ; block_id++) {
 		std::vector<float> block_data(BLOCK_SIZE);
-		readStdinBlockData(BLOCK_SIZE, block_id, block_data);
+		readStdinBlockData(BLOCK_SIZE, block_id, block_data); //block_data holds the data for one block
 		if((std::cin.rdstate()) != 0) {
 			std::cerr << "End of input stream reached" << std::endl;
+			//FINAL RUN TIME IS THE ADDITION OF THE RUN TIME FOR EACH BLOCK
 			std::cerr << "Final run time  = "<<final<<std::endl;
 			exit(1);
 		}
+		//--------------------RF-FRONT END-----------------------
+		//STD CERR WAS USED FOR DEBUGGING MOST OF THE ISSUES
 		//std::cerr << "Read block " << block_id << std::endl;
 		auto block_start = std::chrono::high_resolution_clock::now();
+		std::cerr<<"Mono Cutoff: "<<mono_Fc<<std::endl;
 
 		split_audio_iq(block_data, i_data, q_data);
 
 		std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
-		std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
-		impulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h);
+		//std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
+		//COULD IMPLEMENT A FUNCTION THAT DOES CONVOLUTION FOR I AND Q IN ONE RUN
 
-		//conv_ds_slow(filt_i, i_data, RF_h, rf_decim, state_i);
-		//conv_ds_slow(filt_q, q_data, RF_h, rf_decim, state_q);
 		conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
 		conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
 		FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+
+		//--------------------END OF RF-FRONT END-------------------
 
 		std::cerr << "I data size: "<< i_data.size() << std::endl;
 		std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
 		std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
 		std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 		
-		if(mode == 0 || mode == 1){
-			impulseResponseLPF(IF_Fs, mono_Fc, num_Taps, IF_h);
+		//-------------------MONO PATH START------------------------
+		//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
 
 		std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
 		std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
-		//conv_ds_slow(processed_data, demod, IF_h, audio_decim, state_mono);
-		conv_ds(processed_data, demod, IF_h, audio_decim, state_mono);
-		} else {
-			gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, IF_h, audio_expan);
-			conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
-		}
+		
+		conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
+		
+		//-------------------MONO PATH END--------------------------
 
 		std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
+		
+		//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
 		auto block_end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> block_time = block_end - block_start;
 		std::cerr << "Block: "<< block_id<< " has runtime: "<<block_time.count()<<std::endl;
 		final += block_time.count();
 
+		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
 		std::vector<short int> audio_data(processed_data.size());
 		for (unsigned int k = 0; k < processed_data.size(); k++){
 			if (std::isnan(processed_data[k])) audio_data[k] = 0;
-			else audio_data[k] = static_cast<short int> (processed_data[k]*16384);
+			else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+
 		}
+		//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit 
 		fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
-
-
-
-	
-
 	}
-	auto full_signal_end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> full_signal_time = full_signal_end - full_signal_start;
-	std::cerr<<"Full signal took: "<<full_signal_time.count();
 
 	return 0;
 }
