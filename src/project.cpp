@@ -161,6 +161,10 @@ int main(int argc, char *argv[])
 	std::vector<float> mixer_coeffs;
 	std::vector<float> mixer_filtered;
 
+	//for BLOCK DELAY
+	std::vector<float> mono_processed_delay;
+	std::vector<float> state_delay(num_Taps, 0.0);
+
 	// impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs);
 	// 	convolveFIR(mixer_filtered, mixer, mixer_coeffs);
 	float fc_allPass = 100000;
@@ -186,6 +190,7 @@ int main(int argc, char *argv[])
 	gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, IF_h, audio_expan);//MONO PATH
 	
 	std::vector<float> processed_data;
+	std::vector<float> stereo_data;
 	auto final = 0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	auto full_signal_start = std::chrono::high_resolution_clock::now();
 	for (unsigned int block_id = 0;  ; block_id++) {
@@ -221,14 +226,14 @@ int main(int argc, char *argv[])
 		std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 		
 		
-		
+		delayBlock(demod, mono_processed_delay, num_Taps,  state_delay);
 		//-------------------MONO PATH START------------------------
 		//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
 
 		std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
 		std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
 		
-		conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
+		conv_rs(processed_data, mono_processed_delay, IF_h, audio_decim, audio_expan, state_mono);
 		
 		//-------------------MONO PATH END--------------------------
 
@@ -264,12 +269,11 @@ int main(int argc, char *argv[])
 		mixer.resize(pilot_filtered.size(), 0.0);
 		for(int i = 0; i < pilot_filtered.size(); i++) {
 			mixer[i] = 2 * pilot_filtered[i] * stereo_filtered[i];
-
 		}
 
 
 		//LPF STERO
-		fc_mixer = pilot_lockInFreq / IF_Fs;
+		fc_mixer = 16000;
 		//void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h)
 		impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs);
 		convolveFIR(mixer_filtered, mixer, mixer_coeffs);
@@ -282,17 +286,22 @@ int main(int argc, char *argv[])
 			//!!!! is equation correct?
 			
 
-			right_stereo[i] = (mixer[i] - processed_data[i]) / 2;
-			left_stereo[i] = (mixer[i] + processed_data[i]) / 2;
+			right_stereo[i] = (mixer[i] - processed_data[i]);
+			left_stereo[i] = (mixer[i] + processed_data[i]);
 		}
 
 		
 
 		std::cerr<<"Mixer size: "<<mixer.size()<<std::endl;
 
+
 		//figure out how to implement 'state saving' in 
 		//finish implementing delay function in filter
-
+		// stereo_data.resize(mixer.size()*2);
+		// for (int i  = 0; i< right_stereo.size(); i++){
+		// 	stereo_data[i] = (i%2 == 0) ? left_stereo[i] : right_stereo[i];
+			
+		// }
 
 
 
@@ -308,14 +317,22 @@ int main(int argc, char *argv[])
 		final += block_time.count();
 
 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-		std::vector<short int> audio_data(processed_data.size());
-		for (unsigned int k = 0; k < processed_data.size(); k++){
-			if (std::isnan(processed_data[k])) audio_data[k] = 0;
-			else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+		// std::vector<short int> audio_data(processed_data.size());
+		// for (unsigned int k = 0; k < processed_data.size(); k++){
+		// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
+		// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 
+		// }
+		// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit 
+		// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+		std::vector<short int> audio_data(stereo_data.size());
+		for (unsigned int k = 0; k < stereo_data.size(); k++){
+			if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+			else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 		}
 		//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit 
 		fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
 
 	}
 

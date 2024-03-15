@@ -127,11 +127,38 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     }
 }
 
-void stereoSeperation(float &left, float &right, std::vector<float> mono, std::vector<float> stereo) {
-	//not sure if this is correct :/
-	for(int i = 0; i < stereo.size(); i++) {
-		right = (stereo[i] - mono[i]) / 2;
-		left = (stereo[i] + mono[i]) / 2;
-	}
+void delayBlock(std::vector<float> input_block, std::vector<float> &output_block, int num_taps, std::vector<float> &state) {
+	output_block.clear();
+	output_block.resize(input_block.size());
+	state.resize(num_taps/2);
 	
+	output_block.assign(state.begin(), state.end());
+	output_block.insert(output_block.end(), input_block.begin(), input_block.end() - state.size());
+	state.assign(input_block.end() - state.size(), input_block.end());
 }
+
+// void blockConvolutionFIR(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, std::vector<float> &state)
+// {				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
+// 	yb.clear(); // this implementation copies the python code
+// 	yb.resize(xb.size(), 0.0);
+
+// 	for (int n = 0; n < (int)xb.size(); n++)
+// 	{
+// 		for (int k = 0; k < (int)h.size(); k++)
+// 		{
+// 			if (n - k >= 0)
+// 			{
+// 				yb[n] += h[k] * xb[n - k];
+// 			}
+// 			else
+// 			{
+// 				yb[n] += h[k] * state[h.size() - 1 + (n - k)]; //
+// 			}
+// 		}
+// 	}
+
+// 	for (int i = 0; i < (int)h.size() - 1; i++) // updates the state at the end for the next block to be used
+// 	{
+// 		state[i] = xb[xb.size() - h.size() + 1 + i];
+// 	}
+// }

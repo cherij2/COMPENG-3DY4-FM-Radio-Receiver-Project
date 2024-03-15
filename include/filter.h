@@ -26,5 +26,6 @@ void convolveFIR(std::vector<float> &, const std::vector<float> &, const std::ve
 void blockConvolutionFIR(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, std::vector<float> &state);
 void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector<float> &h);
 void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ, int &trigOffset, float &errorD, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01);
+void delayBlock(std::vector<float> input_block, std::vector<float> &output_block, int num_taps, std::vector<float> &state);
 
 #endif // DY4_FILTER_H
