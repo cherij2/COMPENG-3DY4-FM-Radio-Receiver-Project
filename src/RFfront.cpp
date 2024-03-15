@@ -145,7 +145,7 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
     for(int n = 0; n < (int)yb.size(); n++){
         int phase = (n*ds)%us; // phase changes when n is incremented in our case
         for (int k = phase; k < (int)h.size(); k+= us){
-            int dx = (ds*n-k)/us; //when n = 1, dx = 2, 
+            int dx = (ds*n-k)/us; //when n = 1, dx starts at 2, 1,  
             
             if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
@@ -189,6 +189,7 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
         // }
         // else {
         current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0) ? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+        //above just implements an if else statement and assigns the value of demod at index i 0 if 
 
         // } 
         //std::cerr<<" FM demod at index: "<<i<<" FM demod value: "<<current_phase[i]<<std::endl;
