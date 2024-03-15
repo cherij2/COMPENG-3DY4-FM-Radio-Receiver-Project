@@ -93,14 +93,14 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     // Constants for the loop filter
     const float Cp = 2.666;
     const float Ci = 3.555;
-
+	std::cerr<< "norm Bandwidth: "<<normBandwidth<<"\tphaseAdjust: "<<phaseAdjust<<"\tncoScale: "<<ncoScale<<std::endl;
     // Calculate gains
     const float Kp = normBandwidth * Cp;
     const float Ki = normBandwidth * normBandwidth * Ci;
 
     // Resize and initialize output vector
     ncoOut.resize(pllIn.size() + 1);
-    ncoOut[0] = 1.0;
+    ncoOut[0] = ;
 
     // Loop through input samples
     for (size_t k = 0; k < pllIn.size(); ++k) {
@@ -124,7 +124,11 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
+		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
     }
+	std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncoOut[5220]"<<ncoOut[pllIn.size()]<<std::endl;
+	
+	std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
 }
 
 void delayBlock(std::vector<float> input_block, std::vector<float> &output_block, int num_taps, std::vector<float> &state) {

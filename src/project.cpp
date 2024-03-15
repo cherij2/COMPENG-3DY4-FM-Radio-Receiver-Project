@@ -297,11 +297,11 @@ int main(int argc, char *argv[])
 
 		//figure out how to implement 'state saving' in 
 		//finish implementing delay function in filter
-		// stereo_data.resize(mixer.size()*2);
-		// for (int i  = 0; i< right_stereo.size(); i++){
-		// 	stereo_data[i] = (i%2 == 0) ? left_stereo[i] : right_stereo[i];
+		stereo_data.resize(mixer.size()*2);
+		for (int i  = 0; i< right_stereo.size(); i++){
+			stereo_data[i] = (i%2 == 0) ? left_stereo[i] : right_stereo[i];
 			
-		// }
+		}
 
 
 
