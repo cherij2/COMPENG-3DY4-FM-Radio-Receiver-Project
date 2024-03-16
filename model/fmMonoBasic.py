@@ -79,6 +79,7 @@ rf_Fs = 2.4e6
 # the cutoff frequency to extract the FM channel from raw IQ data
 rf_Fc = 100e3
 
+
 # the number of taps for the low-pass filter to extract the FM channel
 # this default value for the width of the impulse response should be changed
 # depending on some target objectives, like the width of the transition band
@@ -99,16 +100,49 @@ audio_Fs = 48e3
 # audio_Fc = ... change as needed (see spec in lab document)
 # audio_decim = ... change as needed (see spec in lab document)
 # audio_taps = ... change as you see fit
+audio_Fc = 16e3
+audio_decim = 5
+audio_taps = 101
+
+def LPF(Fs, Fc, N_taps):
+	h = np.zeros(N_taps)
+	Norm_cutoff = Fc/(Fs/2)
+	for i in range(N_taps):
+		if i == ((N_taps-1)/2):
+			h[i] = Norm_cutoff
+		else:
+			h[i] = Norm_cutoff*np.sin(np.pi*Norm_cutoff*(i-(N_taps-1)/2))/(np.pi*Norm_cutoff*(i-(N_taps-1)/2))
+		h[i] = h[i]*np.sin((i*np.pi)/N_taps)**2
+	return h
+def BPF(fb, fe, Fs, N_taps):
+	h = np.zeros(N_taps)
+	Norm_center = ((fe+fb)/2)/(Fs/2)
+	Norm_pass = (fe-fb)/(Fs/2)
+	for i in range(N_taps):
+		if i == ((N_taps-1)/2):
+			h[i] = Norm_pass
+		else:
+			h[i] = Norm_pass*(np.sin(np.pi*(Norm_pass/2)*(i-(N_taps-1)/2))/(np.pi*(Norm_pass/2)*(i-(N_taps/2))))
+		h[i] = h[i]*np.cos(i*Norm_center*np.pi)
+		h[i] = h[i]*np.sin((i*np.pi)/N_taps)**2
+	return h
+def convolution(x, h):
+	yb = np.zeros(len(x))
+	for n in range(len(x)):
+		for k in range(len(h)):
+			if (n-k>=0):
+				yb[n] += h[k] * x[n-k]
+	return yb
 
 # flag that keeps track if your code is running for
 # in-lab (il_vs_th = 0) vs takehome (il_vs_th = 1)
-il_vs_th = 0
+il_vs_th = 1
 
 if __name__ == "__main__":
 
 	# read the raw IQ data from the recorded file
 	# IQ data is assumed to be in 8-bits unsigned (and interleaved)
-	in_fname = "../data/iq_samples.raw"
+	in_fname = "../data/samples0.raw"
 	raw_data = np.fromfile(in_fname, dtype='uint8')
 	print("Read raw RF data from \"" + in_fname + "\" in unsigned 8-bit format")
 	# IQ data is normalized between -1 and +1 in 32-bit float format
@@ -144,35 +178,37 @@ if __name__ == "__main__":
 	if il_vs_th == 0:
 		# to be updated by you during the in-lab session based on firwin
 		# same principle  as for rf_coeff (but different arguments, of course)
-		audio_coeff = np.array([])
+		audio_coeff = signal.firwin(audio_taps, audio_Fc/(audio_Fs/2), window=('hann'))
+		
 	else:
 		# to be updated by you for the takehome exercise
 		# with your own code for impulse response generation
-		audio_coeff = np.array([])
+		audio_coeff = LPF(audio_Fs, audio_Fc, audio_taps)
 
 	# extract the mono audio data through filtering
 	if il_vs_th == 0:
 		# to be updated by you during the in-lab session based on lfilter
 		# same principle as for i_filt or q_filt (but different arguments)
-		audio_filt = np.array([])
+		audio_filt = signal.lfilter(audio_coeff, 1.0, fm_demod)
 	else:
 		# to be updated by you for the takehome exercise
 		# with your own code for single pass convolution
-		audio_filt = np.array([])
+		audio_filt = convolution(fm_demod, audio_coeff)
+
 
 	# you should uncomment the plots below once you have processed the data
 
 	# PSD after extracting mono audio
-	# fmPlotPSD(ax1, audio_filt, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
+	fmPlotPSD(ax1, audio_filt, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
 
 	# downsample audio data (see the principle for i_ds or q_ds)
-	audio_data = np.array([]) # to be updated by you during in-lab (same code for takehome)
+	audio_data = audio_filt[::audio_decim] # to be updated by you during in-lab (same code for takehome)
 
 	# PSD after decimating mono audio
-	# fmPlotPSD(ax2, audio_data, audio_Fs/1e3, subfig_height[2], 'Downsampled Mono Audio')
+	fmPlotPSD(ax2, audio_data, audio_Fs/1e3, subfig_height[2], 'Downsampled Mono Audio')
 
 	# save PSD plots
-	fig.savefig("../data/fmMonoBasic.png")
+	fig.savefig("../data/fmMonoBasicwithconvo.png")
 	plt.show()
 
 	# write audio data to file (assumes audio_data samples are -1 to +1)

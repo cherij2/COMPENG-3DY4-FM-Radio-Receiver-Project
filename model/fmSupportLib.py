@@ -26,6 +26,40 @@ import math, cmath
 # identities, like derivative of the arctan function or derivatives of ratios
 #
 
+def derivativeDemod(I, Q, prev_phase = 0.0, I_prev = 0.0, Q_prev = 0.0):
+	
+	current_phase = np.empty(len(I))
+	#current_phase[0] = prev_phase
+	
+	# iterate through each of the I and Q pairs
+	for k in range(len(I)):
+		# use the atan2 function (four quadrant version) to detect angle between
+		# the imaginary part (quadrature Q) and the real part (in-phase I)
+		deriv_I = I[k] - I_prev
+		deriv_Q = Q[k] - Q_prev
+
+		current_phase[k] = ((I[k])*(deriv_Q) - (Q[k])*(deriv_I)) / ((I[k])**2 + (Q[k])**2)
+
+		# we need to unwrap the angle obtained in radians through arctan2
+		# to deal with the case when the change between consecutive angles
+		# is greater than Pi radians (unwrap brings it back between -Pi to Pi)
+		#[prev_phase, current_phase] = np.unwrap([prev_phase, current_phase])
+
+		# take the derivative of the phase
+		
+		I_prev = I[k]
+		Q_prev = Q[k]
+
+		# save the state of the current phase
+		# to compute the next derivative
+	# prev_phase = current_phase[-1]
+
+	# return both the demodulated samples as well as the last phase
+	# (the last phase is needed to enable continuity for block processing)
+	return current_phase, prev_phase, I_prev, Q_prev
+
+	
+
 #
 # use the four quadrant arctan function for phase detect between a pair of
 # IQ samples; then unwrap the phase and take its derivative to demodulate
