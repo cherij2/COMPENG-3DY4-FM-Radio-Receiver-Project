@@ -21,100 +21,174 @@ import numpy as np
 import math
 
 
+def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01, state=None):
+    """
+    pllIn          array of floats
+                   input signal to the PLL (assume known frequency)
+    
+    freq           float
+                   reference frequency to which the PLL locks
+    
+    Fs             float
+                   sampling rate for the input/output signals
+    
+    ncoScale       float
+                   frequency scale factor for the NCO output
+    
+    phaseAdjust    float
+                   phase adjust to be added to the NCO output only
+    
+    normBandwidth  float
+                   normalized bandwidth for the loop filter
+                   (relative to the sampling rate)
+    
+    state          dictionary
+                   dictionary to store and update internal state
+    
+    """
+    # Scale factors for proportional/integrator terms
+    # These scale factors were derived assuming a damping factor of 0.707 (1 over square root of 2)
+    # There is no oscillator gain and no phase detector gain
+    Cp = 2.666
+    Ci = 3.555
 
-def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01):
-	"""
+    # Gain for the proportional term
+    Kp = normBandwidth * Cp
+    # Gain for the integrator term
+    Ki = normBandwidth * normBandwidth * Ci
 
-	pllIn 	 		array of floats
+    # Initialize internal state if not provided
+    if state is None:
+        state = {
+            'integrator': 0.0,
+            'phaseEst': 0.0,
+            'feedbackI': 1.0,
+            'feedbackQ': 0.0,
+            'ncoOut': np.empty(len(pllIn) + 1),
+            'trigOffset': 0
+        }
+        state['ncoOut'][0] = 1.0
 
-					input signal to the PLL (assume known frequency)
+    # Process each sample
+    for k in range(len(pllIn)):
+        # Phase detector
+        errorI = pllIn[k] * (+state['feedbackI'])  # Complex conjugate of the input
+        errorQ = pllIn[k] * (-state['feedbackQ'])  # Feedback complex exponential
 
-	freq 			float
+        # Four-quadrant arctangent discriminator for phase error detection
+        errorD = math.atan2(errorQ, errorI)
 
-					reference frequency to which the PLL locks
+        # Loop filter
+        state['integrator'] = state['integrator'] + Ki * errorD
 
-	Fs  			float
+        # Update phase estimate
+        state['phaseEst'] = state['phaseEst'] + Kp * errorD + state['integrator']
 
-					sampling rate for the input/output signals
+        # Internal oscillator
+        state['trigOffset'] += 1
+        trigArg = 2 * math.pi * (freq / Fs) * state['trigOffset'] + state['phaseEst']
+        state['feedbackI'] = math.cos(trigArg)
+        state['feedbackQ'] = math.sin(trigArg)
+        state['ncoOut'][k + 1] = math.cos(trigArg * ncoScale + phaseAdjust)
 
-	ncoScale		float
+    # Update the last element of ncoOut
+    state['ncoOut'][-1] = math.cos((2 * math.pi * (freq / Fs) * (state['trigOffset'] + 1)) * ncoScale + phaseAdjust)
 
-					frequency scale factor for the NCO output
+    # Return output and updated state
+    return state['ncoOut'], state
+# def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01):
+# 	"""
 
-	phaseAdjust		float
+# 	pllIn 	 		array of floats
 
-					phase adjust to be added to the NCO output only
+# 					input signal to the PLL (assume known frequency)
 
-	normBandwidth	float
+# 	freq 			float
 
-					normalized bandwidth for the loop filter
+# 					reference frequency to which the PLL locks
 
-					(relative to the sampling rate)
+# 	Fs  			float
 
-	state 			to be added
+# 					sampling rate for the input/output signals
 
+# 	ncoScale		float
 
-	"""
+# 					frequency scale factor for the NCO output
 
-	# scale factors for proportional/integrator terms
+# 	phaseAdjust		float
 
-	# these scale factors were derived assuming the following:
+# 					phase adjust to be added to the NCO output only
 
-	# damping factor of 0.707 (1 over square root of 2)
+# 	normBandwidth	float
 
-	# there is no oscillator gain and no phase detector gain
+# 					normalized bandwidth for the loop filter
 
-	Cp = 2.666
-	Ci = 3.555
+# 					(relative to the sampling rate)
 
-	# gain for the proportional term
-	Kp = (normBandwidth)*Cp
-	# gain for the integrator term
-	Ki = (normBandwidth*normBandwidth)*Ci
-
-	# output array for the NCO
-	ncoOut = np.empty(len(pllIn)+1)
-
-	# initialize internal state
-	integrator = 0.0
-	phaseEst = 0.0
-	feedbackI = 1.0
-	feedbackQ = 0.0
-	ncoOut[0] = 1.0
-	trigOffset = 0
-
-	# note: state saving will be needed for block processing
-
-
-
-	for k in range(len(pllIn)):
-
-		# phase detector
-		errorI = pllIn[k] * (+feedbackI)  # complex conjugate of the
-
-		errorQ = pllIn[k] * (-feedbackQ)  # feedback complex exponential
+# 	state 			to be added
 
 
+# 	"""
 
-		# four-quadrant arctangent discriminator for phase error detection
-		errorD = math.atan2(errorQ, errorI)
+# 	# scale factors for proportional/integrator terms
 
-		# loop filter
-		integrator = integrator + Ki*errorD
+# 	# these scale factors were derived assuming the following:
 
-		# update phase estimate
-		phaseEst = phaseEst + Kp*errorD + integrator
+# 	# damping factor of 0.707 (1 over square root of 2)
 
-		# internal oscillator
-		trigOffset += 1
-		trigArg = 2*math.pi*(freq/Fs)*(trigOffset) + phaseEst
-		feedbackI = math.cos(trigArg)
-		feedbackQ = math.sin(trigArg)
-		ncoOut[k+1] = math.cos(trigArg*ncoScale + phaseAdjust)
+# 	# there is no oscillator gain and no phase detector gain
 
-	# for stereo only the in-phase NCO component should be returned
-	# for block processing you should also return the state
-	return ncoOut, 
+# 	Cp = 2.666
+# 	Ci = 3.555
+
+# 	# gain for the proportional term
+# 	Kp = (normBandwidth)*Cp
+# 	# gain for the integrator term
+# 	Ki = (normBandwidth*normBandwidth)*Ci
+
+# 	# output array for the NCO
+# 	ncoOut = np.empty(len(pllIn)+1)
+
+# 	# initialize internal state
+# 	integrator = 0.0
+# 	phaseEst = 0.0
+# 	feedbackI = 1.0
+# 	feedbackQ = 0.0
+# 	ncoOut[0] = 1.0
+# 	trigOffset = 0
+
+# 	# note: state saving will be needed for block processing
+
+
+
+# 	for k in range(len(pllIn)):
+
+# 		# phase detector
+# 		errorI = pllIn[k] * (+feedbackI)  # complex conjugate of the
+
+# 		errorQ = pllIn[k] * (-feedbackQ)  # feedback complex exponential
+
+
+
+# 		# four-quadrant arctangent discriminator for phase error detection
+# 		errorD = math.atan2(errorQ, errorI)
+
+# 		# loop filter
+# 		integrator = integrator + Ki*errorD
+
+# 		# update phase estimate
+# 		phaseEst = phaseEst + Kp*errorD + integrator
+
+# 		# internal oscillator
+# 		trigOffset += 1
+# 		trigArg = 2*math.pi*(freq/Fs)*(trigOffset) + phaseEst
+# 		feedbackI = math.cos(trigArg)
+# 		feedbackQ = math.sin(trigArg)
+# 		ncoOut[k+1] = math.cos(trigArg*ncoScale + phaseAdjust)
+
+# 	# for stereo only the in-phase NCO component should be returned
+# 	# for block processing you should also return the state
+# 	return ncoOut, 
 	# for RDS add also the quadrature NCO component to the output
 
 
