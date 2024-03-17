@@ -124,6 +124,8 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
+		if(k < 3 || k > pllIn.size() - 5){
+		std::cerr<<" index: "<<k<<"\t trig arg: "<<trigArg<<"\t feedbackI: "<<feedbackI<<std::endl;}
 		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
     }
 	std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
@@ -131,6 +133,59 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
 	std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
 }
 
+// void fmPll(const std::vector<double>& pllIn, double freq, double Fs, double ncoScale, double phaseAdjust, double normBandwidth, std::vector<double>& ncoOut, std::vector<double>& state) {
+//     // Scale factors for proportional/integrator terms
+//     // These scale factors were derived assuming a damping factor of 0.707 (1 over square root of 2)
+//     // There is no oscillator gain and no phase detector gain
+//     double Cp = 2.666;
+//     double Ci = 3.555;
+
+//     // Gain for the proportional term
+//     double Kp = normBandwidth * Cp;
+//     // Gain for the integrator term
+//     double Ki = normBandwidth * normBandwidth * Ci;
+
+//     // Initialize internal state if not provided
+//     if (state.empty()) {
+//         state.resize(6); // Integrator, phaseEst, feedbackI, feedbackQ, ncoOut[0], trigOffset
+//         state[0] = 0.0; // Integrator
+//         state[1] = 0.0; // phaseEst
+//         state[2] = 1.0; // feedbackI
+//         state[3] = 0.0; // feedbackQ
+//         state[4] = 1.0; // ncoOut[0]
+//         state[5] = 0; // trigOffset
+//     }
+
+//     // Resize output array for the NCO
+//     ncoOut.resize(pllIn.size() + 1);
+
+//     // Process each sample
+//     for (size_t k = 0; k < pllIn.size(); ++k) {
+//         // Phase detector
+//         double errorI = pllIn[k] * (+state[2]); // Complex conjugate of the input
+//         double errorQ = pllIn[k] * (-state[3]); // Feedback complex exponential
+
+//         // Four-quadrant arctangent discriminator for phase error detection
+//         double errorD = atan2(errorQ, errorI);
+
+//         // Loop filter
+//         state[0] = state[0] + Ki * errorD;
+
+//         // Update phase estimate
+//         state[1] = state[1] + Kp * errorD + state[0];
+
+//         // Internal oscillator
+//         state[5]++;
+//         double trigArg = 2 * M_PI * (freq / Fs) * state[5] + state[1];
+//         state[2] = cos(trigArg);
+//         state[3] = sin(trigArg);
+//         ncoOut[k + 1] = cos(trigArg * ncoScale + phaseAdjust);
+//     }
+
+//     // Update the last element of ncoOut
+//     double trigArgLast = 2 * M_PI * (freq / Fs) * (state[5] + 1) + state[1];
+//     ncoOut.back() = cos(trigArgLast * ncoScale + phaseAdjust);
+// }
 void delayBlock(std::vector<float> input_block, std::vector<float> &output_block, int num_taps, std::vector<float> &state) {
 	output_block.clear();
 	output_block.resize(input_block.size());

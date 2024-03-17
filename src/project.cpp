@@ -155,11 +155,14 @@ int main(int argc, char *argv[])
 	std::vector<float> stereo_BPF_coeffs;
 	std::vector<float> pilot_filtered;
 	std::vector<float> stereo_filtered;
+	std::vector<float> state_pilot(num_Taps, 0.0);
+	std::vector<float> state_stereo(num_Taps, 0.0);
 
 	float fc_mixer;
 	std::vector<float> mixer;
 	std::vector<float> mixer_coeffs;
 	std::vector<float> mixer_filtered;
+	std::vector<float> state_mixer(num_Taps, 0.0);
 
 	//for BLOCK DELAY
 	std::vector<float> mono_processed_delay;
@@ -248,25 +251,25 @@ int main(int argc, char *argv[])
 
 			BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 			std::cerr<<"pilot BPF coeffs: "<<pilot_BPF_coeffs.size()<<std::endl;
-			for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
-				std::cerr<<"BPF within 18.5k and 19.5k: "<<pilot_BPF_coeffs[i]<<std::endl;
+			// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
+			// 	std::cerr<<"BPF within 18.5k and 19.5k: "<<pilot_BPF_coeffs[i]<<std::endl;
 
 
-			}
+			// }
 			// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
 			// std::cerr<<"LPF for IF: "<<IF_h[i]<<std::endl;}
-			convolveFIR(pilot_filtered, demod, pilot_BPF_coeffs);
+			conv_ds_fast(pilot_filtered, demod, pilot_BPF_coeffs,1,state_pilot);
 
 			//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 
 			//to get stereo band freq
 			BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
-			convolveFIR(stereo_filtered, demod, stereo_BPF_coeffs);
-			for (int i = 0; i<stereo_BPF_coeffs.size(); i++){
-				std::cerr<<"BPF within 22k and 54k: "<<stereo_BPF_coeffs[i]<<std::endl;
+			conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
+			// for (int i = 0; i<stereo_BPF_coeffs.size(); i++){
+			// 	std::cerr<<"BPF within 22k and 54k: "<<stereo_BPF_coeffs[i]<<std::endl;
 
 
-			}
+			// }
 			std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
 			std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<< "\tstereo_filtered size: "<<stereo_filtered.size()<<std::endl;
 
@@ -291,10 +294,10 @@ int main(int argc, char *argv[])
 			fc_mixer = 16000;
 			//void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h)
 			impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs); //THIS SHOULD BE THE SAME COEFFICIENTS AS THE ONES GENERATED FOR MONO
-			for (int i = 0; i<mixer_coeffs.size(); i++){
-				std::cerr<<"mixer coeffs: "<<mixer_coeffs[i]<<"\tmono coefficients: "<<IF_h[i]<<std::endl;//
-			}
-			convolveFIR(mixer_filtered, mixer, mixer_coeffs);
+			// for (int i = 0; i<mixer_coeffs.size(); i++){
+			// 	std::cerr<<"mixer coeffs: "<<mixer_coeffs[i]<<"\tmono coefficients: "<<IF_h[i]<<std::endl;//
+			// }
+			conv_ds_fast(mixer_filtered, mixer, mixer_coeffs, audio_decim, state_mixer);
 
 
 			//RIGHT AND LEFT STEREO
