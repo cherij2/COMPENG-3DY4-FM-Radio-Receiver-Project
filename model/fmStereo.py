@@ -66,7 +66,10 @@ def state_saving_convolution (h,xb, previous): #this function does convolution w
 	
 	return yb, previous
 
-
+def delayBlock(input_block, state_block):
+	output_block = np.concatenate((state_block, input_block[:-len(state_block)]))
+	state_block = input_block[-len(state_block):]
+	return output_block, state_block
 
 if __name__ == "__main__":
 
@@ -112,7 +115,7 @@ if __name__ == "__main__":
 	Q_prev = 0
 	
 	
-	
+	state_delay = np.zeros((audio_taps-1)//2)
 	
 	# add state as needed for the mono channel filter
 	state_lpf = np.zeros(audio_taps-1)
@@ -158,10 +161,10 @@ if __name__ == "__main__":
 		
 		mono_filt, state_lpf = signal.lfilter(mono_coeff, 1.0, fm_demod, zi = state_lpf)
 		
-
+		final_mono, state_delay = delayBlock(mono_filt, state_delay)
 		# downsample audio data
 		# to be updated by you during in-lab (same code for takehome)
-		mono_block = mono_filt[::audio_decim]
+		mono_block = final_mono[::audio_decim]
 
 		# concatenate the most recently processed audio_block
 		# to the previous blocks stored already in audio_data
