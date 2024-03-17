@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
 	# read the raw IQ data from the recorded file
 	# IQ data is assumed to be in 8-bits unsigned (and interleaved)
-	in_fname = "../data/samples0.raw"
+	in_fname = "../data/stereo_l0_r9.raw"
 	raw_data = np.fromfile(in_fname, dtype='uint8')
 	print("Read raw RF data from \"" + in_fname + "\" in unsigned 8-bit format")
 	# IQ data is normalized between -1 and +1 in 32-bit float format
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 		block_count += 1
 	
 	print('Finished processing all the blocks from the recorded I/Q samples')
-	audio_data = np.vstack((left_data, right_data)).T.flatten()
+	audio_data = np.vstack((left_data, right_data)).T
 	# write audio data to file
 	out_fname = "../data/fmStereo.wav"
 	wavfile.write(out_fname, int(audio_Fs), np.int16((audio_data/2)*32767))
