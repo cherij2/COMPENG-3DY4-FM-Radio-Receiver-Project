@@ -90,7 +90,8 @@ def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.
         state['feedbackI'] = math.cos(trigArg)
         state['feedbackQ'] = math.sin(trigArg)
         state['ncoOut'][k + 1] = math.cos(trigArg * ncoScale + phaseAdjust)
-
+        if(k < 3 or k > len(pllIn) - 5):
+            print(" index: ", k, "\ttrigArg: ", trigArg, "\tfeedbackI: ", state['feedbackI'],"ncoOut at index", k,  state['ncoOut'][k])
     # Update the last element of ncoOut
     state['ncoOut'][-1] = math.cos((2 * math.pi * (freq / Fs) * (state['trigOffset'] + 1)) * ncoScale + phaseAdjust)
 
@@ -198,4 +199,3 @@ if __name__ == "__main__":
 
 
 	pass
-
