@@ -187,9 +187,13 @@ if __name__ == "__main__":
 		
 		stereo_data = np.concatenate((stereo_data, stereo_block))
 
+
 		left_data = np.concatenate((left_data, left_block))
 
 		right_data = np.concatenate((right_data, right_block))
+  
+		print("mono filt size: ", len(mono_filt), " stereo filt size: ", len(mixer_filt))
+		print("mono block size: ", len(mono_block), " stereo block size: ", len(stereo_block))
 
 		# to save runtime select the range of blocks to log data
 		# this includes both saving binary files as well plotting PSD
@@ -221,7 +225,18 @@ if __name__ == "__main__":
 		block_count += 1
 	
 	print('Finished processing all the blocks from the recorded I/Q samples')
-	audio_data = np.vstack((left_data, right_data)).T
+	print("length of right channel: ", len(right_data), " length of left channel", len(left_data))
+	
+	audio_data = np.hstack((left_data[:, np.newaxis], right_data[:, np.newaxis]))
+	print("length of combined data: ", len(audio_data))
+	out_fname_left = "../data/fmleft.wav"
+	wavfile.write(out_fname_left, int(audio_Fs), np.int16((left_data/2)*32767))
+	print("Written audio samples to \"" + out_fname_left + "\" in signed 16-bit format")
+
+	out_fname_right = "../data/fmright.wav"
+	wavfile.write(out_fname_right, int(audio_Fs), np.int16((right_data/2)*32767))
+	print("Written audio samples to \"" + out_fname_right + "\" in signed 16-bit format")
+
 	# write audio data to file
 	out_fname = "../data/fmStereo.wav"
 	wavfile.write(out_fname, int(audio_Fs), np.int16((audio_data/2)*32767))
