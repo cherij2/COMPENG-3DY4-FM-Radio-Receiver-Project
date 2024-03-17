@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
 	# if the number of samples in the last block is less than the block size
 	# it is fine to ignore the last few samples from the raw IQ file
-	while (block_count+1)*block_size < len(iq_data):#14*block_size:
+	while (block_count+1)*block_size < 14*block_size: #len(iq_data):
 
 		# if you wish to have shorter runtimes while troubleshooting
 		# you can control the above loop exit condition as you see fit
