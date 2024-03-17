@@ -74,16 +74,16 @@ void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::v
 	h.clear();
 	h.resize(num_taps, 0.0);
 	float norm_center = ((Fe+Fb)/2)/(Fs/2) ;
-	float norm_pass = (Fe-Fb)/(Fs/2) ; 
-	
-	for(int i = 0; i < num_taps - 1; i++) {
+	float norm_pass = (Fe-Fb)/(Fs/2) ;
+
+	for(int i = 0; i < num_taps; i++) {
 		if(i == ((num_taps-1)/2)) {
 			h[i] = norm_pass;
 		} else {
 			h[i] = norm_pass * ((sin(PI*(norm_pass/2)*(i-(num_taps-1)/2)))/(PI*(norm_pass/2)*(i-(num_taps-1)/2)));
 		}
-		
-		h[i] = h[i]*cos((i-(num_taps-1)/2)*PI*norm_center);
+
+		h[i] = h[i]*cos(i*PI*norm_center);
 		h[i] = h[i]*sin(i*PI/num_taps)*sin(i*PI/num_taps);
 	}
 }
@@ -100,7 +100,7 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
 
     // Resize and initialize output vector
     ncoOut.resize(pllIn.size() + 1);
-    ncoOut[0] = ;
+    // ncoOut[0] = ;
 
     // Loop through input samples
     for (size_t k = 0; k < pllIn.size(); ++k) {
@@ -126,8 +126,8 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
 		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
     }
-	std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncoOut[5220]"<<ncoOut[pllIn.size()]<<std::endl;
-	
+	std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
+
 	std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
 }
 
@@ -135,7 +135,7 @@ void delayBlock(std::vector<float> input_block, std::vector<float> &output_block
 	output_block.clear();
 	output_block.resize(input_block.size());
 	state.resize(num_taps/2);
-	
+
 	output_block.assign(state.begin(), state.end());
 	output_block.insert(output_block.end(), input_block.begin(), input_block.end() - state.size());
 	state.assign(input_block.end() - state.size(), input_block.end());
