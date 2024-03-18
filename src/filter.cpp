@@ -100,7 +100,10 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
 
     // Resize and initialize output vector
     ncoOut.resize(pllIn.size() + 1);
-    // ncoOut[0] = ;
+    ncoOut[0] = 1.0;
+	trigOffset = 0;
+	integrator = 0;
+	phaseEst = 0.0;
 
     // Loop through input samples
     for (size_t k = 0; k < pllIn.size(); ++k) {
@@ -124,10 +127,12 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
-		if(k < 3 || k > pllIn.size() - 5){
-		std::cerr<<" index: "<<k<<"\t trig arg: "<<trigArg<<"\t feedbackI: "<<feedbackI<<std::endl;}
+		if(k < 5 || k > pllIn.size() - 5){
+		std::cerr<<"index: "<<k<<"\ttrig arg: "<<trigArg<<"\tfeedbackI: "<<feedbackI<<"'\tfeedbackQ: "<<feedbackQ<<"\tPLLin: "<<pllIn[k]<<"\tphaseEst: "<<phaseEst<<"\ttrigoffset"<<trigOffset<<"\tintegrator"<<integrator<<std::endl;}
 		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
-    }
+		
+	}
+
 	std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
 
 	std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;

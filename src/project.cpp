@@ -166,13 +166,11 @@ int main(int argc, char *argv[])
 
 	//for BLOCK DELAY
 	std::vector<float> mono_processed_delay;
-	std::vector<float> state_delay(num_Taps, 0.0);
+	std::vector<float> state_delay((num_Taps-1)/2, 0.0);
 
 	// impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs);
 	// 	convolveFIR(mixer_filtered, mixer, mixer_coeffs);
-	float fc_allPass = 100000;
-	std::vector<float> allPass_coeffs;
-	std::vector<float> allPass_filtered;
+
 
 	std::vector<float> right_stereo;
 	std::vector<float> left_stereo;
@@ -200,8 +198,8 @@ int main(int argc, char *argv[])
 		for (unsigned int block_id = 0;  ; block_id++) {
 			std::vector<float> block_data(BLOCK_SIZE);
 			readStdinBlockData(BLOCK_SIZE, block_id, block_data); //block_data holds the data for one block
-			// if((std::cin.rdstate()) != 0) {
-			if(block_id == 2){
+			if((std::cin.rdstate()) != 0) {
+			// if(block_id == 4){
 				std::cerr << "End of input stream reached" << std::endl;
 				//FINAL RUN TIME IS THE ADDITION OF THE RUN TIME FOR EACH BLOCK
 				std::cerr << "Final run time  = "<<final<<std::endl;
@@ -276,7 +274,12 @@ int main(int argc, char *argv[])
 
 
 
-
+			// for (int i = 0; i < 30;i++){
+			// 	std::cerr<<"pilot filtered at "<<i<<" "<<pilot_filtered[i]<<std::endl;
+			// }
+			// for(int i = 0; i <30;i++){
+			// 	std::cerr<<"pilot band coeffs at "<<i<<" "<< pilot_BPF_coeffs[i]<<std::endl;
+			// }
 			//PLL for pilot
 			//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
 			fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs, integrator, phaseEst, feedbackI, feedbackQ, trigOffset, errorD, ncoScale, phaseAdjust, normBandwidth);
@@ -301,24 +304,24 @@ int main(int argc, char *argv[])
 
 
 			//RIGHT AND LEFT STEREO
-			right_stereo.resize(mixer.size());
-			left_stereo.resize(mixer.size());
-			for(int i = 0; i < mixer.size(); i++) {
+			right_stereo.resize(mixer_filtered.size());
+			left_stereo.resize(mixer_filtered.size());
+			for(int i = 0; i < mixer_filtered.size(); i++) {
 				//!!!! is equation correct?
 
 
-				right_stereo[i] = (mixer[i] - processed_data[i]);
-				left_stereo[i] = (mixer[i] + processed_data[i]);
+				right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
+				left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
 			}
 
 
 
-			std::cerr<<"Mixer size: "<<mixer.size()<<std::endl;
+			std::cerr<<"Mixer filtered size: "<<mixer_filtered.size()<<std::endl;
 
 
 			//figure out how to implement 'state saving' in
 			//finish implementing delay function in filter
-			stereo_data.resize(mixer.size()*2);
+			stereo_data.resize(mixer_filtered.size());
 			for (int i  = 0; i< right_stereo.size(); i++){
 				stereo_data[i] = (i%2 == 0) ? left_stereo[i] : right_stereo[i];
 
@@ -346,10 +349,10 @@ int main(int argc, char *argv[])
 			// }
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-			std::vector<short int> audio_data(stereo_data.size());
-			for (unsigned int k = 0; k < stereo_data.size(); k++){
-				if (std::isnan(stereo_data[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			std::vector<short int> audio_data(left_stereo.size());
+			for (unsigned int k = 0; k < left_stereo.size(); k++){
+				if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 			}
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
