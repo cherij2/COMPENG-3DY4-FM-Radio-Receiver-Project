@@ -333,12 +333,12 @@ int main(int argc, char *argv[])
 				i += 2;
 			
 			}
-			std::cerr<<"Stereo Data size: "<<stereo_data.size()<<"Left and right: "<<left_stereo.size()<<right_stereo.size()<<std::endl;
-			for (int i  = 0; i < 21;i++){
-				std::cerr<<"Stereo data at index: "<<i<<" data: "<<stereo_data[i]<<std::endl;
-				std::cerr<<"Right data: "<<right_stereo[i]<<std::endl;
-				std::cerr<<"Left data: "<<left_stereo[i]<<std::endl;
-			}
+			// std::cerr<<"Stereo Data size: "<<stereo_data.size()<<"Left and right: "<<left_stereo.size()<<right_stereo.size()<<std::endl;
+			// for (int i  = 0; i < 21;i++){
+			// 	std::cerr<<"Stereo data at index: "<<i<<" data: "<<stereo_data[i]<<std::endl;
+			// 	std::cerr<<"Right data: "<<right_stereo[i]<<std::endl;
+			// 	std::cerr<<"Left data: "<<left_stereo[i]<<std::endl;
+			// }
 
 			//-------------------STEREO PATH END--------------------------
 
