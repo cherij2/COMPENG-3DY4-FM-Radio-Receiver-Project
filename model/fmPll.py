@@ -20,8 +20,57 @@ import numpy as np
 
 import math
 
+def fmPll(pllIn, freq, Fs, ncoScale=1.0, phaseAdjust=0.0, normBandwidth=0.01, state=None):
+    # Previous state initialization
+    if state is None:
+        state = {
+            'integrator': 0.0,
+            'phaseEst': 0.0,
+            'feedbackI': 1.0,
+            'feedbackQ': 0.0,
+            'trigOffset': 0
+        }
 
-def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01, state=None):
+    Cp = 2.666
+    Ci = 3.555
+
+    Kp = (normBandwidth) * Cp
+    Ki = (normBandwidth * normBandwidth) * Ci
+
+    ncoOut = np.empty(len(pllIn) + 1)
+
+    integrator = state['integrator']
+    phaseEst = state['phaseEst']
+    feedbackI = state['feedbackI']
+    feedbackQ = state['feedbackQ']
+    trigOffset = state['trigOffset']
+
+    for k in range(len(pllIn)):
+        errorI = pllIn[k] * (+feedbackI)
+        errorQ = pllIn[k] * (-feedbackQ)
+        errorD = math.atan2(errorQ, errorI)
+
+        integrator = integrator + Ki * errorD
+        phaseEst = phaseEst + Kp * errorD + integrator
+
+        trigOffset += 1
+        trigArg = 2 * math.pi * (freq / Fs) * trigOffset + phaseEst
+        feedbackI = math.cos(trigArg)
+        feedbackQ = math.sin(trigArg)
+        ncoOut[k + 1] = math.cos(trigArg * ncoScale + phaseAdjust)
+        if(k < 7 or k > len(pllIn) - 7):
+            print("index: ", k, "\ttrigArg: ", round(trigArg, 6), "\tfeedbackI: ", round(feedbackI,6),"\tncoOut at index", k,  round(ncoOut[k],6),  "\tfeedbackQ: ", round(feedbackQ,6), "\ttrigOffset", round(trigOffset,6), "\tPLLin at k: ", round(pllIn[k],6),"\tphaseEst: ", round(phaseEst,6), "integrator", round(integrator, 6))
+    state = {
+        'integrator': integrator,
+        'phaseEst': phaseEst,
+        'feedbackI': feedbackI,
+        'feedbackQ': feedbackQ,
+        'trigOffset': trigOffset
+    }
+
+    return ncoOut, state
+
+# def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.01, state=None):
     """
     pllIn          array of floats
                    input signal to the PLL (assume known frequency)

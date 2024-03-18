@@ -48,7 +48,13 @@ elif(mode == 1):
 
 il_vs_th = 0
 
-
+initial_state = {
+	'integrator': 0.0,
+    'phaseEst': 0.0,
+    'feedbackI': 1.0,
+    'feedbackQ': 0.0,
+    'trigOffset': 0
+}
 
 def state_saving_convolution (h,xb, previous): #this function does convolution with state saving, replaces lfilter functionality
 
@@ -131,10 +137,11 @@ if __name__ == "__main__":
 	stereo_data = np.array([])
 	left_data = np.array([])
 	right_data = np.array([])
+	state = initial_state
 
 	# if the number of samples in the last block is less than the block size
 	# it is fine to ignore the last few samples from the raw IQ file
-	while (block_count+1)*block_size < 5*block_size: #len(iq_data):
+	while (block_count+1)*block_size < len(iq_data):#5*block_size: #len(iq_data):
 
 		# if you wish to have shorter runtimes while troubleshooting
 		# you can control the above loop exit condition as you see fit
@@ -178,7 +185,7 @@ if __name__ == "__main__":
 		stereoband_filt, state_stereoband = signal.lfilter(stereo_band_coeffs, 1.0, fm_demod, zi = state_stereoband)
 
 
-		ncoOut, state = fmPll(pilot_filt, 19000, if_Fs, 2.0)
+		ncoOut, state = fmPll(pilot_filt, 19000, if_Fs, 2.0, state = state)
 		mixer =	2*ncoOut[:-1]*stereoband_filt
 
 		mixer_filt, state_mixer = signal.lfilter(mono_coeff,1.0,mixer , zi = state_mixer)
@@ -201,29 +208,29 @@ if __name__ == "__main__":
 		# to save runtime select the range of blocks to log data
 		# this includes both saving binary files as well plotting PSD
 		# below we assume we want to plot for graphs for blocks 10 and 11
-		# if block_count >= 10 and block_count < 12:
+		if block_count >= 10 and block_count < 12:
 
-		# 	# plot PSD of selected block after FM demodulation
-		# 	ax0.clear()
-		# 	fmPlotPSD(ax0, fm_demod, (rf_Fs/rf_decim)/1e3, subfig_height[0], \
-		# 			'Demodulated FM (block ' + str(block_count) + ')')
-		# 	# output binary file name (where samples are written from Python)
-		# 	fm_demod_fname = "../data/fm_demod_" + str(block_count) + ".bin"
-		# 	# create binary file where each sample is a 32-bit float
-		# 	fm_demod.astype('float32').tofile(fm_demod_fname)
+			# plot PSD of selected block after FM demodulation
+			ax0.clear()
+			fmPlotPSD(ax0, fm_demod, (rf_Fs/rf_decim)/1e3, subfig_height[0], \
+					'Demodulated FM (block ' + str(block_count) + ')')
+			# output binary file name (where samples are written from Python)
+			fm_demod_fname = "../data/fm_demod_" + str(block_count) + ".bin"
+			# create binary file where each sample is a 32-bit float
+			fm_demod.astype('float32').tofile(fm_demod_fname)
 
-		# 	# plot PSD of selected block after extracting mono audio
-		# 	# ... change as needed
-		# 	#fmPlotPSD(ax1, audio_filt, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Mono')
+			# plot PSD of selected block after extracting mono audio
+			# ... change as needed
+			fmPlotPSD(ax1, mixer_filt, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Stereo')
 
-		# 	# plot PSD of selected block after downsampling mono audio
-		# 	# ... change as needed
-		# 	fmPlotPSD(ax2, audio_block, audio_Fs/1e3, subfig_height[2], 'Downsampled Mono Audio')
+			# plot PSD of selected block after downsampling mono audio
+			# ... change as needed
+			fmPlotPSD(ax2, stereo_block, audio_Fs/1e3, subfig_height[2], 'Downsampled Stereo Audio')
 			
 
 
 			# # save figure to file
-			# fig.savefig("../data/fmMonoBlock" + str(block_count) + ".png")
+			fig.savefig("../data/fmStereoBlock" + str(block_count) + ".png")
 
 		block_count += 1
 	
