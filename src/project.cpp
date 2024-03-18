@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 	mono_Fc = ((std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) < 16000) ? (std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) : 16000.0;
 
 	std::vector<float> RF_h;
-	std::vector<float> IF_h;
+	std::vector<float> final_coeffs;
 
 	std::vector<float> i_data, q_data;
 	std::vector<float> filt_i, filt_q;
@@ -158,7 +158,9 @@ int main(int argc, char *argv[])
 	std::vector<float> state_pilot(num_Taps-1, 0.0);
 	std::vector<float> state_stereo(num_Taps-1, 0.0);
 
-	float fc_mixer;
+
+
+	//MIXER VARIABLES
 	std::vector<float> mixer;
 	std::vector<float> mixer_coeffs;
 	std::vector<float> mixer_filtered;
@@ -168,14 +170,10 @@ int main(int argc, char *argv[])
 	std::vector<float> mono_processed_delay;
 	std::vector<float> state_delay((num_Taps-1)/2, 0.0);
 
-	// impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs);
-	// 	convolveFIR(mixer_filtered, mixer, mixer_coeffs);
-
-
 	std::vector<float> right_stereo;
 	std::vector<float> left_stereo;
 
-
+	State state = {0.0, 0.0, 1.0, 0.0, 0, 1.0};
 	float pilot_lockInFreq = 19000;
 	std::vector<float> pilot_NCO_outp;
 	float normBandwidth = 0.01;
@@ -186,13 +184,18 @@ int main(int argc, char *argv[])
 	std::cerr<<"TEST";
 	float prev_i = 0.0;
 	float prev_q =0.0;
-	//LPF COEFFICIENTS FOR FRONT END AND MONO PATH
-	gainimpulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h, audio_expan); //FRONT END
-	gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, IF_h, audio_expan);//MONO PATH
-
 	std::vector<float> processed_data;
 	std::vector<float> stereo_data;
-	double final = 0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
+	//LPF COEFFICIENTS FOR FRONT END AND MONO PATH
+	gainimpulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h, audio_expan); //FRONT END
+	gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, final_coeffs, audio_expan);//MONO PATH
+
+	//BPF COEFFICIENTS FOR STEREO PILOT FREQUENCY 1ST and STEREOBAND 2ND
+	BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
+	BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
+	
+
+	float final = 0.0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	auto full_signal_start = std::chrono::high_resolution_clock::now();
 	while (true){
 		for (unsigned int block_id = 0;  ; block_id++) {
@@ -233,10 +236,10 @@ int main(int argc, char *argv[])
 			//-------------------MONO PATH START------------------------
 			//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
 
-			// std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
+			// std::cerr << "final_coeffs size: "<< final_coeffs.size() << std::endl;
 			// std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
 
-			conv_rs(processed_data, mono_processed_delay, IF_h, audio_decim, audio_expan, state_mono);
+			conv_rs(processed_data, mono_processed_delay, final_coeffs, audio_decim, audio_expan, state_mono);
 
 			//-------------------MONO PATH END--------------------------
 
@@ -247,7 +250,6 @@ int main(int argc, char *argv[])
 
 			//to get pilot freq
 
-			BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 			std::cerr<<"pilot BPF coeffs: "<<pilot_BPF_coeffs.size()<<std::endl;
 			// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
 			// 	std::cerr<<"BPF within 18.5k and 19.5k: "<<pilot_BPF_coeffs[i]<<std::endl;
@@ -255,13 +257,13 @@ int main(int argc, char *argv[])
 
 			// }
 			// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
-			// std::cerr<<"LPF for IF: "<<IF_h[i]<<std::endl;}
-			conv_ds_fast(pilot_filtered, demod, pilot_BPF_coeffs,1,state_pilot);
+			// std::cerr<<"LPF for IF: "<<final_coeffs[i]<<std::endl;}
+			conv_ds_fast(pilot_filtered, demod, pilot_BPF_coeffs, 1, state_pilot);
 
 			//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 
 			//to get stereo band freq
-			BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
+		
 			conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
 			// for (int i = 0; i<stereo_BPF_coeffs.size(); i++){
 			// 	std::cerr<<"BPF within 22k and 54k: "<<stereo_BPF_coeffs[i]<<std::endl;
@@ -282,36 +284,38 @@ int main(int argc, char *argv[])
 			// }
 			//PLL for pilot
 			//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-			fmPll(pilot_filtered,pilot_NCO_outp, pilot_lockInFreq, IF_Fs, integrator, phaseEst, feedbackI, feedbackQ, trigOffset, errorD, ncoScale, phaseAdjust, normBandwidth);
-
+	
+			fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
+			 
 
 
 			//MIXER
 			mixer.resize(stereo_filtered.size(), 0.0);
 			for(int i = 0; i < stereo_filtered.size(); i++) {
 				mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
+				// if(i < 30){
+				// std::cerr<< "index: "<<i<<"\tpilot NCO output "<<pilot_NCO_outp[i]<<"\tstereo filtered"<<stereo_filtered[i]<<"\tmixer val: "<<mixer[i]<<std::endl;
+				
+				// }
 			}
 
+			
 
-			//LPF STERO
-			fc_mixer = 16000;
-			//void impulseResponseLPF(float Fs, float Fc, unsigned short int num_taps, std::vector<float> &h)
-			impulseResponseLPF(IF_Fs, fc_mixer, STnumTaps, mixer_coeffs); //THIS SHOULD BE THE SAME COEFFICIENTS AS THE ONES GENERATED FOR MONO
-			// for (int i = 0; i<mixer_coeffs.size(); i++){
-			// 	std::cerr<<"mixer coeffs: "<<mixer_coeffs[i]<<"\tmono coefficients: "<<IF_h[i]<<std::endl;//
+			conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
+			// for (int i = 0; i < 30; i++){
+			// 	std::cerr<<"mixer coeffs: "<<final_coeffs[i]<<std::endl;
 			// }
-			conv_ds_fast(mixer_filtered, mixer, mixer_coeffs, audio_decim, state_mixer);
-
 
 			//RIGHT AND LEFT STEREO
 			right_stereo.resize(mixer_filtered.size());
 			left_stereo.resize(mixer_filtered.size());
 			for(int i = 0; i < mixer_filtered.size(); i++) {
 				//!!!! is equation correct?
-
-
 				right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
 				left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
+				// if(i < 30){
+				// std::cerr<<"Mixer filtered at index: "<<i<<" value: "<<mixer_filtered[i]<<std::endl;
+				// }
 			}
 
 
@@ -321,13 +325,20 @@ int main(int argc, char *argv[])
 
 			//figure out how to implement 'state saving' in
 			//finish implementing delay function in filter
-			stereo_data.resize(mixer_filtered.size());
-			for (int i  = 0; i< right_stereo.size(); i++){
-				stereo_data[i] = (i%2 == 0) ? left_stereo[i] : right_stereo[i];
-
+			stereo_data.resize(right_stereo.size()*2);
+			int i = 0;
+			for (int k = 0; k< right_stereo.size(); k++){
+				stereo_data[i] = left_stereo[k];
+				stereo_data[i+1] = right_stereo[k];
+				i += 2;
+			
 			}
-
-
+			std::cerr<<"Stereo Data size: "<<stereo_data.size()<<"Left and right: "<<left_stereo.size()<<right_stereo.size()<<std::endl;
+			for (int i  = 0; i < 21;i++){
+				std::cerr<<"Stereo data at index: "<<i<<" data: "<<stereo_data[i]<<std::endl;
+				std::cerr<<"Right data: "<<right_stereo[i]<<std::endl;
+				std::cerr<<"Left data: "<<left_stereo[i]<<std::endl;
+			}
 
 			//-------------------STEREO PATH END--------------------------
 
@@ -337,9 +348,9 @@ int main(int argc, char *argv[])
 			//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
 			auto block_end = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double, std::milli> block_time = block_end - block_start;
-			std::cerr << "Block: "<< block_id<< " has runtime: "<<block_time.count()<<std::endl;
+			std::cerr << "Block: "<< block_id<< " has runtime: "<<block_time.count()<<"\n"<<std::endl;
 			final += block_time.count();
-
+			///------------BELOW WRITES THE MONO PATH------------
 			//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
 			// std::vector<short int> audio_data(processed_data.size());
 			// for (unsigned int k = 0; k < processed_data.size(); k++){
@@ -349,6 +360,7 @@ int main(int argc, char *argv[])
 			// }
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
 			//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
 			// std::vector<short int> audio_data(left_stereo.size());
 			// for (unsigned int k = 0; k < left_stereo.size(); k++){
@@ -358,6 +370,7 @@ int main(int argc, char *argv[])
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
+			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
 			std::vector<short int> audio_data(right_stereo.size());
 			for (unsigned int k = 0; k < right_stereo.size(); k++){
 				if (std::isnan(right_stereo[k])) audio_data[k] = 0;
@@ -366,9 +379,9 @@ int main(int argc, char *argv[])
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
-		}
+		}//ends for
 
 
 		return 0;
-	}
+	}//ends while
 }

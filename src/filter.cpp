@@ -89,108 +89,102 @@ void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::v
 }
 
 
-void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ, int &trigOffset, float &errorD, float ncoScale, float phaseAdjust, float normBandwidth) {
-    // Constants for the loop filter
+// void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ\
+// , int &trigOffset, float &errorD, float ncoScale, float phaseAdjust, float normBandwidth) {
+//     // Constants for the loop filter
+//     const float Cp = 2.666;
+//     const float Ci = 3.555;
+// 	std::cerr<< "norm Bandwidth: "<<normBandwidth<<"\tphaseAdjust: "<<phaseAdjust<<"\tncoScale: "<<ncoScale<<std::endl;
+//     // Calculate gains
+//     const float Kp = normBandwidth * Cp;
+//     const float Ki = normBandwidth * normBandwidth * Ci;
+
+//     // Resize and initialize output vector
+//     ncoOut.resize(pllIn.size() + 1);
+//     ncoOut[0] = 1.0;
+// 	trigOffset = 0;
+// 	integrator = 0;
+// 	phaseEst = 0.0;
+
+//     // Loop through input samples
+//     for (size_t k = 0; k < pllIn.size(); ++k) {
+//         // Phase detector
+//         float errorI = pllIn[k] * feedbackI; // Infreqor
+//         float errorQ = pllIn[k] * (-feedbackQ); //freqe error
+
+//         // Arc tangent phase discriminator
+//         float errorD = std::atan2(errorQ, errorI);
+
+//         // Loop filter
+//         integrator += Ki * errorD;
+
+//         // Update phase estimate
+//         phaseEst += Kp * errorD + integrator;
+
+//         // Update internal oscillator state
+//         trigOffset++;
+
+//         float trigArg = 2 * M_PI * (freq / Fs) * trigOffset + phaseEst;
+//         feedbackI = std::cos(trigArg);
+//         feedbackQ = std::sin(trigArg);
+//         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
+// 		// if(k < 7 || k > pllIn.size() - 7){
+// 		// std::cerr<<"index: "<<k<<"\ttrig arg: "<<trigArg<<"\tfeedbackI: "<<feedbackI<<"\tncoOut: "<<ncoOut[k]<<"\tfeedbackQ: "<<feedbackQ<<"\ttrigoffset"<<trigOffset<<"\tPLLin: "<<pllIn[k]<<"\tphaseEst: "<<phaseEst<<"\tintegrator"<<integrator<<std::endl;}
+// 		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
+		
+// 	}
+
+// 	// std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
+
+// 	// std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
+// }
+
+void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale , float phaseAdjust, float normBandwidth , State& state) {
     const float Cp = 2.666;
     const float Ci = 3.555;
-	std::cerr<< "norm Bandwidth: "<<normBandwidth<<"\tphaseAdjust: "<<phaseAdjust<<"\tncoScale: "<<ncoScale<<std::endl;
-    // Calculate gains
-    const float Kp = normBandwidth * Cp;
-    const float Ki = normBandwidth * normBandwidth * Ci;
 
-    // Resize and initialize output vector
-    ncoOut.resize(pllIn.size() + 1);
-    ncoOut[0] = 1.0;
-	trigOffset = 0;
-	integrator = 0;
-	phaseEst = 0.0;
+    const float Kp = (normBandwidth) * Cp;
+    const float Ki = (normBandwidth * normBandwidth) * Ci;
 
-    // Loop through input samples
+    ncoOut.clear();ncoOut.resize((pllIn.size() + 1));
+
+    float integrator = state.integrator;
+    float phaseEst = state.phaseEst;
+    float feedbackI = state.feedbackI;
+    float feedbackQ = state.feedbackQ;
+    int trigOffset = state.trigOffset;
+    float prev_ncoOut = state.prev_ncoOut;
+
+    // Set the first element of ncoOut with the last element of the previous block
+    ncoOut[0] = prev_ncoOut;
+
     for (size_t k = 0; k < pllIn.size(); ++k) {
-        // Phase detector
-        float errorI = pllIn[k] * feedbackI; // Infreqor
-        float errorQ = pllIn[k] * (-feedbackQ); //freqe error
-
-        // Arc tangent phase discriminator
+        float errorI = pllIn[k] * (+feedbackI);
+        float errorQ = pllIn[k] * (-feedbackQ);
         float errorD = std::atan2(errorQ, errorI);
 
-        // Loop filter
         integrator += Ki * errorD;
+        phaseEst += + Kp * errorD + integrator;
 
-        // Update phase estimate
-        phaseEst += Kp * errorD + integrator;
-
-        // Update internal oscillator state
-        trigOffset++;
-
+        trigOffset ++;
         float trigArg = 2 * M_PI * (freq / Fs) * trigOffset + phaseEst;
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
-		// if(k < 7 || k > pllIn.size() - 7){
-		// std::cerr<<"index: "<<k<<"\ttrig arg: "<<trigArg<<"\tfeedbackI: "<<feedbackI<<"\tncoOut: "<<ncoOut[k]<<"\tfeedbackQ: "<<feedbackQ<<"\ttrigoffset"<<trigOffset<<"\tPLLin: "<<pllIn[k]<<"\tphaseEst: "<<phaseEst<<"\tintegrator"<<integrator<<std::endl;}
-		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
-		
-	}
+    }
 
-	// std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
+    // Save the last element of ncoOut for the next block
+    prev_ncoOut = ncoOut.back();
 
-	// std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
+    // Update state
+    state.integrator = integrator;
+    state.phaseEst = phaseEst;
+    state.feedbackI = feedbackI;
+    state.feedbackQ = feedbackQ;
+    state.trigOffset = trigOffset;
+    state.prev_ncoOut = prev_ncoOut;
+
 }
-
-// void fmPll(const std::vector<double>& pllIn, double freq, double Fs, double ncoScale, double phaseAdjust, double normBandwidth, std::vector<double>& ncoOut, std::vector<double>& state) {
-//     // Scale factors for proportional/integrator terms
-//     // These scale factors were derived assuming a damping factor of 0.707 (1 over square root of 2)
-//     // There is no oscillator gain and no phase detector gain
-//     double Cp = 2.666;
-//     double Ci = 3.555;
-
-//     // Gain for the proportional term
-//     double Kp = normBandwidth * Cp;
-//     // Gain for the integrator term
-//     double Ki = normBandwidth * normBandwidth * Ci;
-
-//     // Initialize internal state if not provided
-//     if (state.empty()) {
-//         state.resize(6); // Integrator, phaseEst, feedbackI, feedbackQ, ncoOut[0], trigOffset
-//         state[0] = 0.0; // Integrator
-//         state[1] = 0.0; // phaseEst
-//         state[2] = 1.0; // feedbackI
-//         state[3] = 0.0; // feedbackQ
-//         state[4] = 1.0; // ncoOut[0]
-//         state[5] = 0; // trigOffset
-//     }
-
-//     // Resize output array for the NCO
-//     ncoOut.resize(pllIn.size() + 1);
-
-//     // Process each sample
-//     for (size_t k = 0; k < pllIn.size(); ++k) {
-//         // Phase detector
-//         double errorI = pllIn[k] * (+state[2]); // Complex conjugate of the input
-//         double errorQ = pllIn[k] * (-state[3]); // Feedback complex exponential
-
-//         // Four-quadrant arctangent discriminator for phase error detection
-//         double errorD = atan2(errorQ, errorI);
-
-//         // Loop filter
-//         state[0] = state[0] + Ki * errorD;
-
-//         // Update phase estimate
-//         state[1] = state[1] + Kp * errorD + state[0];
-
-//         // Internal oscillator
-//         state[5]++;
-//         double trigArg = 2 * M_PI * (freq / Fs) * state[5] + state[1];
-//         state[2] = cos(trigArg);
-//         state[3] = sin(trigArg);
-//         ncoOut[k + 1] = cos(trigArg * ncoScale + phaseAdjust);
-//     }
-
-//     // Update the last element of ncoOut
-//     double trigArgLast = 2 * M_PI * (freq / Fs) * (state[5] + 1) + state[1];
-//     ncoOut.back() = cos(trigArgLast * ncoScale + phaseAdjust);
-// }
 void delayBlock(const std::vector<float> &input_block, std::vector<float> &output_block, std::vector<float> &state) {
 	output_block.clear();
 	output_block.resize(input_block.size());

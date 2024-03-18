@@ -117,7 +117,6 @@ void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const st
 
 	for (int n = 0; n < (int)yb.size(); n++)
 	{
-        float sum = 0.0;
 		for (int k = 0; k < (int)h.size(); k++)
 		{
 			if (ds*n - k >= 0)
