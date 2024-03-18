@@ -25,26 +25,26 @@ def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.
     """
     pllIn          array of floats
                    input signal to the PLL (assume known frequency)
-    
+
     freq           float
                    reference frequency to which the PLL locks
-    
+
     Fs             float
                    sampling rate for the input/output signals
-    
+
     ncoScale       float
                    frequency scale factor for the NCO output
-    
+
     phaseAdjust    float
                    phase adjust to be added to the NCO output only
-    
+
     normBandwidth  float
                    normalized bandwidth for the loop filter
                    (relative to the sampling rate)
-    
+
     state          dictionary
                    dictionary to store and update internal state
-    
+
     """
     # Scale factors for proportional/integrator terms
     # These scale factors were derived assuming a damping factor of 0.707 (1 over square root of 2)
@@ -90,9 +90,9 @@ def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.
         state['feedbackI'] = math.cos(trigArg)
         state['feedbackQ'] = math.sin(trigArg)
         state['ncoOut'][k + 1] = math.cos(trigArg * ncoScale + phaseAdjust)
-        if(k < 5 or k > len(pllIn) - 5):
-            print("index: ", k, "\ttrigArg: ", trigArg, "\tfeedbackI: ", state['feedbackI'],"\tncoOut at index", k,  state['ncoOut'][k], "\nfeedbackQ: ", state['feedbackQ'], "\ttrigOffset", state['trigOffset'], "\tPLLin at k: ", pllIn[k],"\tphaseEst: ", state['phaseEst'])
-            
+        if(k < 7 or k > len(pllIn) - 7):
+            print("index: ", k, "\ttrigArg: ", round(trigArg, 6), "\tfeedbackI: ", round(state['feedbackI'],6),"\tncoOut at index", k,  round(state['ncoOut'][k],6),  "\tfeedbackQ: ", round(state['feedbackQ'],6), "\ttrigOffset", round(state['trigOffset'],6), "\tPLLin at k: ", round(pllIn[k],6),"\tphaseEst: ", round(state['phaseEst'],6), "integrator", round(state['integrator'], 6))
+
             #print("feedbackQ: ", state['feedbackQ'], "\tintegrator", state['integrator'], "\tphaseEst", state['phaseEst'])
     # Update the last element of ncoOut
     state['ncoOut'][-1] = math.cos((2 * math.pi * (freq / Fs) * (state['trigOffset'] + 1)) * ncoScale + phaseAdjust)
@@ -191,7 +191,7 @@ def fmPll(pllIn, freq, Fs, ncoScale = 1.0, phaseAdjust = 0.0, normBandwidth = 0.
 
 # 	# for stereo only the in-phase NCO component should be returned
 # 	# for block processing you should also return the state
-# 	return ncoOut, 
+# 	return ncoOut,
 	# for RDS add also the quadrature NCO component to the output
 
 

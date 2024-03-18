@@ -155,14 +155,14 @@ int main(int argc, char *argv[])
 	std::vector<float> stereo_BPF_coeffs;
 	std::vector<float> pilot_filtered;
 	std::vector<float> stereo_filtered;
-	std::vector<float> state_pilot(num_Taps, 0.0);
-	std::vector<float> state_stereo(num_Taps, 0.0);
+	std::vector<float> state_pilot(num_Taps-1, 0.0);
+	std::vector<float> state_stereo(num_Taps-1, 0.0);
 
 	float fc_mixer;
 	std::vector<float> mixer;
 	std::vector<float> mixer_coeffs;
 	std::vector<float> mixer_filtered;
-	std::vector<float> state_mixer(num_Taps, 0.0);
+	std::vector<float> state_mixer(num_Taps-1, 0.0);
 
 	//for BLOCK DELAY
 	std::vector<float> mono_processed_delay;
@@ -192,14 +192,14 @@ int main(int argc, char *argv[])
 
 	std::vector<float> processed_data;
 	std::vector<float> stereo_data;
-	auto final = 0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
+	double final = 0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	auto full_signal_start = std::chrono::high_resolution_clock::now();
 	while (true){
 		for (unsigned int block_id = 0;  ; block_id++) {
 			std::vector<float> block_data(BLOCK_SIZE);
 			readStdinBlockData(BLOCK_SIZE, block_id, block_data); //block_data holds the data for one block
 			if((std::cin.rdstate()) != 0) {
-			// if(block_id == 4){
+			//if(block_id == 4){
 				std::cerr << "End of input stream reached" << std::endl;
 				//FINAL RUN TIME IS THE ADDITION OF THE RUN TIME FOR EACH BLOCK
 				std::cerr << "Final run time  = "<<final<<std::endl;
@@ -209,11 +209,11 @@ int main(int argc, char *argv[])
 			//STD CERR WAS USED FOR DEBUGGING MOST OF THE ISSUES
 			//std::cerr << "Read block " << block_id << std::endl;
 			auto block_start = std::chrono::high_resolution_clock::now();
-			std::cerr<<"Mono Cutoff: "<<mono_Fc<<std::endl;
+			//std::cerr<<"Mono Cutoff: "<<mono_Fc<<std::endl;
 
 			split_audio_iq(block_data, i_data, q_data);
 
-			std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
+			//std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
 			//std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
 			//COULD IMPLEMENT A FUNCTION THAT DOES CONVOLUTION FOR I AND Q IN ONE RUN
 
@@ -223,18 +223,18 @@ int main(int argc, char *argv[])
 
 			//--------------------END OF RF-FRONT END-------------------
 
-			std::cerr << "I data size: "<< i_data.size() << std::endl;
-			std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
-			std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
-			std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
+			// std::cerr << "I data size: "<< i_data.size() << std::endl;
+			// std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
+			// std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
+			// std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 
 
-			delayBlock(demod, mono_processed_delay, num_Taps,  state_delay);
+			delayBlock(demod, mono_processed_delay, state_delay);
 			//-------------------MONO PATH START------------------------
 			//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
 
-			std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
-			std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
+			// std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
+			// std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
 
 			conv_rs(processed_data, mono_processed_delay, IF_h, audio_decim, audio_expan, state_mono);
 
@@ -287,9 +287,9 @@ int main(int argc, char *argv[])
 
 
 			//MIXER
-			mixer.resize(pilot_filtered.size(), 0.0);
-			for(int i = 0; i < pilot_filtered.size(); i++) {
-				mixer[i] = 2 * pilot_filtered[i] * stereo_filtered[i];
+			mixer.resize(stereo_filtered.size(), 0.0);
+			for(int i = 0; i < stereo_filtered.size(); i++) {
+				mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
 			}
 
 
@@ -349,14 +349,22 @@ int main(int argc, char *argv[])
 			// }
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-			std::vector<short int> audio_data(left_stereo.size());
-			for (unsigned int k = 0; k < left_stereo.size(); k++){
-				if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
+			// std::vector<short int> audio_data(left_stereo.size());
+			// for (unsigned int k = 0; k < left_stereo.size(); k++){
+			// 	if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
+			std::vector<short int> audio_data(right_stereo.size());
+			for (unsigned int k = 0; k < right_stereo.size(); k++){
+				if (std::isnan(right_stereo[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 			}
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
 
 		}
 

@@ -127,15 +127,15 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
-		if(k < 5 || k > pllIn.size() - 5){
-		std::cerr<<"index: "<<k<<"\ttrig arg: "<<trigArg<<"\tfeedbackI: "<<feedbackI<<"'\tfeedbackQ: "<<feedbackQ<<"\tPLLin: "<<pllIn[k]<<"\tphaseEst: "<<phaseEst<<"\ttrigoffset"<<trigOffset<<"\tintegrator"<<integrator<<std::endl;}
+		// if(k < 7 || k > pllIn.size() - 7){
+		// std::cerr<<"index: "<<k<<"\ttrig arg: "<<trigArg<<"\tfeedbackI: "<<feedbackI<<"\tncoOut: "<<ncoOut[k]<<"\tfeedbackQ: "<<feedbackQ<<"\ttrigoffset"<<trigOffset<<"\tPLLin: "<<pllIn[k]<<"\tphaseEst: "<<phaseEst<<"\tintegrator"<<integrator<<std::endl;}
 		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
 		
 	}
 
-	std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
+	// std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
 
-	std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
+	// std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
 }
 
 // void fmPll(const std::vector<double>& pllIn, double freq, double Fs, double ncoScale, double phaseAdjust, double normBandwidth, std::vector<double>& ncoOut, std::vector<double>& state) {
@@ -191,10 +191,10 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
 //     double trigArgLast = 2 * M_PI * (freq / Fs) * (state[5] + 1) + state[1];
 //     ncoOut.back() = cos(trigArgLast * ncoScale + phaseAdjust);
 // }
-void delayBlock(std::vector<float> input_block, std::vector<float> &output_block, int num_taps, std::vector<float> &state) {
+void delayBlock(const std::vector<float> &input_block, std::vector<float> &output_block, std::vector<float> &state) {
 	output_block.clear();
 	output_block.resize(input_block.size());
-	state.resize(num_taps/2);
+
 
 	output_block.assign(state.begin(), state.end());
 	output_block.insert(output_block.end(), input_block.begin(), input_block.end() - state.size());
