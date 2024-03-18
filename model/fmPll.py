@@ -38,13 +38,18 @@ def fmPll(pllIn, freq, Fs, ncoScale=1.0, phaseAdjust=0.0, normBandwidth=0.01, st
     Ki = (normBandwidth * normBandwidth) * Ci
 
     ncoOut = np.empty(len(pllIn) + 1)
+    ncoOut[0] = 1.0
 
     integrator = state['integrator']
     phaseEst = state['phaseEst']
     feedbackI = state['feedbackI']
     feedbackQ = state['feedbackQ']
     trigOffset = state['trigOffset']
+    prev_ncoOut = state['prev_ncoOut']
 
+
+    ncoOut[0] = prev_ncoOut
+    
     for k in range(len(pllIn)):
         errorI = pllIn[k] * (+feedbackI)
         errorQ = pllIn[k] * (-feedbackQ)
@@ -60,12 +65,14 @@ def fmPll(pllIn, freq, Fs, ncoScale=1.0, phaseAdjust=0.0, normBandwidth=0.01, st
         ncoOut[k + 1] = math.cos(trigArg * ncoScale + phaseAdjust)
         if(k < 7 or k > len(pllIn) - 7):
             print("index: ", k, "\ttrigArg: ", round(trigArg, 6), "\tfeedbackI: ", round(feedbackI,6),"\tncoOut at index", k,  round(ncoOut[k],6),  "\tfeedbackQ: ", round(feedbackQ,6), "\ttrigOffset", round(trigOffset,6), "\tPLLin at k: ", round(pllIn[k],6),"\tphaseEst: ", round(phaseEst,6), "integrator", round(integrator, 6))
+    prev_ncoOut = ncoOut[-1]
     state = {
         'integrator': integrator,
         'phaseEst': phaseEst,
         'feedbackI': feedbackI,
         'feedbackQ': feedbackQ,
-        'trigOffset': trigOffset
+        'trigOffset': trigOffset,
+        'prev_ncoOut':prev_ncoOut
     }
 
     return ncoOut, state

@@ -53,7 +53,8 @@ initial_state = {
     'phaseEst': 0.0,
     'feedbackI': 1.0,
     'feedbackQ': 0.0,
-    'trigOffset': 0
+    'trigOffset': 0,
+	'prev_ncoOut': 1.0
 }
 
 def state_saving_convolution (h,xb, previous): #this function does convolution with state saving, replaces lfilter functionality
