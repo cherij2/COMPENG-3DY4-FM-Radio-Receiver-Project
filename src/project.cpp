@@ -301,7 +301,8 @@ int main(int argc, char *argv[])
 
 			
 
-			conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
+			//conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
+			conv_rs(mixer_filtered, mixer, final_coeffs, audio_decim, audio_expan, state_mixer);
 			// for (int i = 0; i < 30; i++){
 			// 	std::cerr<<"mixer coeffs: "<<final_coeffs[i]<<std::endl;
 			// }
@@ -362,22 +363,22 @@ int main(int argc, char *argv[])
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
-			// std::vector<short int> audio_data(left_stereo.size());
-			// for (unsigned int k = 0; k < left_stereo.size(); k++){
-			// 	if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
-			std::vector<short int> audio_data(right_stereo.size());
-			for (unsigned int k = 0; k < right_stereo.size(); k++){
-				if (std::isnan(right_stereo[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			std::vector<short int> audio_data(left_stereo.size());
+			for (unsigned int k = 0; k < left_stereo.size(); k++){
+				if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 			}
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
+			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
+			// std::vector<short int> audio_data(right_stereo.size());
+			// for (unsigned int k = 0; k < right_stereo.size(); k++){
+			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 		}//ends for
 
