@@ -363,13 +363,13 @@ int main(int argc, char *argv[])
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
-			std::vector<short int> audio_data(left_stereo.size());
-			for (unsigned int k = 0; k < left_stereo.size(); k++){
-				if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			}
-			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			// std::vector<short int> audio_data(left_stereo.size());
+			// for (unsigned int k = 0; k < left_stereo.size(); k++){
+			// 	if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
 			// std::vector<short int> audio_data(right_stereo.size());
@@ -379,6 +379,15 @@ int main(int argc, char *argv[])
 			// }
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
+			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
+			std::vector<short int> audio_data(stereo_data.size());
+			for (unsigned int k = 0; k < stereo_data.size(); k++){
+				if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 		}//ends for
 
