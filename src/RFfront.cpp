@@ -109,7 +109,7 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 	}
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
     state = new_state;
-    std::cerr<<"new_state of "<<new_state.size()<<std::endl;
+    //std::cerr<<"new_state of "<<new_state.size()<<std::endl;
 }
 void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state){				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
 	yb.clear(); // this implementation copies the python code
@@ -132,14 +132,14 @@ void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const st
 	}
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
     state = new_state;
-    std::cerr<<"new_state: "<<new_state.size()<<std::endl;
+    //std::cerr<<"new_state: "<<new_state.size()<<std::endl;
 }
 
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
     //fast implementation from lecture notes
-    std::cerr<< "yb: "<<yb.size()<<" xb size: "<<xb.size()<<" h size: "<<h.size()<<std::endl;
+    //std::cerr<< "yb: "<<yb.size()<<" xb size: "<<xb.size()<<" h size: "<<h.size()<<std::endl;
     
     for(int n = 0; n < (int)yb.size(); n++){
         int phase = (n*ds)%us; // phase changes when n is incremented in our case
@@ -155,9 +155,9 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
             }
         }
     }
-    std::cerr<< "resampling state size = "<<state.size()<<std::endl;
+    //std::cerr<< "resampling state size = "<<state.size()<<std::endl;
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
-    std::cerr<<"new_state size: "<<new_state.size()<<std::endl;
+    //std::cerr<<"new_state size: "<<new_state.size()<<std::endl;
     state = new_state;
 }
 

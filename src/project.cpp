@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 
 			//to get pilot freq
 
-			std::cerr<<"pilot BPF coeffs: "<<pilot_BPF_coeffs.size()<<std::endl;
+			//std::cerr<<"pilot BPF coeffs: "<<pilot_BPF_coeffs.size()<<std::endl;
 			// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
 			// 	std::cerr<<"BPF within 18.5k and 19.5k: "<<pilot_BPF_coeffs[i]<<std::endl;
 
@@ -270,8 +270,8 @@ int main(int argc, char *argv[])
 
 
 			// }
-			std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
-			std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<< "\tstereo_filtered size: "<<stereo_filtered.size()<<std::endl;
+			//std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
+			//std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<< "\tstereo_filtered size: "<<stereo_filtered.size()<<std::endl;
 
 
 
@@ -286,7 +286,13 @@ int main(int argc, char *argv[])
 			//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
 	
 			fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
-			 
+			// pilot_filtered = convoluted band pass from 18.5 to 19.5
+			// pilot_NCO_outp = simulated wave (NCO)
+			// lockinFreq = 19000 (given)
+			// IF_Fs = intermediate frequency
+			// ncoScale = (2x for stereo) (0.5x for RDS) given value
+			// phaseAdjust, normBandwidth = given value
+			// state = struct that used that updates every block 
 
 
 			//MIXER
@@ -321,7 +327,7 @@ int main(int argc, char *argv[])
 
 
 
-			std::cerr<<"Mixer filtered size: "<<mixer_filtered.size()<<std::endl;
+			//std::cerr<<"Mixer filtered size: "<<mixer_filtered.size()<<std::endl;
 
 
 			//figure out how to implement 'state saving' in
@@ -344,7 +350,7 @@ int main(int argc, char *argv[])
 			//-------------------STEREO PATH END--------------------------
 
 
-			std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
+			//std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
 
 			//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
 			auto block_end = std::chrono::high_resolution_clock::now();
