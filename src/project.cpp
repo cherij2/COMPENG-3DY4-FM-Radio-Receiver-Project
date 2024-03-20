@@ -220,8 +220,8 @@ int main(int argc, char *argv[])
 			//std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
 			//COULD IMPLEMENT A FUNCTION THAT DOES CONVOLUTION FOR I AND Q IN ONE RUN
 
-			conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
-			conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
+			conv_ds_fast(filt_i, i_data, RF_h, rf_decim, state_i);
+			conv_ds_fast(filt_q, q_data, RF_h, rf_decim, state_q);
 			FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
 
 			//--------------------END OF RF-FRONT END-------------------
