@@ -57,6 +57,15 @@ initial_state = {
 	'prev_ncoOut': 1.0
 }
 
+initial_state_rds = {
+	'integrator': 0.0,
+    'phaseEst': 0.0,
+    'feedbackI': 1.0,
+    'feedbackQ': 0.0,
+    'trigOffset': 0,
+	'prev_ncoOut': 1.0
+}
+
 def state_saving_convolution (h,xb, previous): #this function does convolution with state saving, replaces lfilter functionality
 
 	len_xb = len(xb)
@@ -99,6 +108,11 @@ if __name__ == "__main__":
 	pilot_coeffs = BPF(18500, 19500, if_Fs, if_taps)
 
 	stereo_band_coeffs = BPF(22000, 54000, if_Fs, if_taps)
+	
+	rds_band_coeffs = BPF(54000, 60000, if_Fs, if_taps)
+
+	rds_CR_coeffs = BPF(113500, 114500, if_Fs, if_taps)
+
 
 
 	
@@ -127,9 +141,11 @@ if __name__ == "__main__":
 	# add state as needed for the mono channel filter
 	state_lpf = np.zeros(audio_taps-1)
 
-	#state for stereband and pilot 
+	#state for stereoband and pilot 
 	state_pilot = np.zeros(audio_taps-1)
 	state_stereoband = np.zeros(audio_taps-1)
+	bb_state_rds = np.zeros(audio_taps-1)
+	CR_state_rds = np.zeros(audio_taps-1)
 
 	#mixer state
 	state_mixer = np.zeros(audio_taps-1)
@@ -202,6 +218,18 @@ if __name__ == "__main__":
 		left_data = np.concatenate((left_data, left_block))
 
 		right_data = np.concatenate((right_data, right_block))
+
+		#RDS IMPLEMENTATION
+
+		#convolution for baseband
+		bb_rds_filt, bb_state_rds = signal.lfilter(rds_band_coeffs, 1.0, fm_demod, zi = bb_state_rds)
+
+		nonLin_rds = bb_rds_filt[:-1]*bb_rds_filt
+
+		CR_rds_filt, CR_state_rds = signal.lfilter(rds_CR_coeffs, 1.0, nonLin_rds, zi = CR_state_rds)
+
+		rds_ncoOut, state = fmPll(pilot_filt, 19000, if_Fs, 2.0, state = state)
+
   
 		print("mono filt size: ", len(mono_filt), " stereo filt size: ", len(mixer_filt))
 		print("mono block size: ", len(mono_block), " stereo block size: ", len(stereo_block))
