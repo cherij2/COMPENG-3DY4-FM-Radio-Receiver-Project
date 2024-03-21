@@ -123,8 +123,8 @@ int main(int argc, char *argv[])
 		audio_expan = 147;
 		BLOCK_SIZE = 15*audio_decim*rf_decim*2;
 	}
-	std::cerr<<"audio expan: "<<audio_expan<<" audio decim: "<<audio_decim<<std::endl;
-	std::cerr<<"min between these two: " <<((audio_expan/audio_decim)*IF_Fs/2)<<" and this valie: "<<IF_Fs/2<<std::endl;
+	// std::cerr<<"audio expan: "<<audio_expan<<" audio decim: "<<audio_decim<<std::endl;
+	// std::cerr<<"min between these two: " <<((audio_expan/audio_decim)*IF_Fs/2)<<" and this valie: "<<IF_Fs/2<<std::endl;
 	mono_Fc = ((std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) < 16000) ? (std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) : 16000.0;
 	
 	std::vector<float> RF_h;
@@ -155,43 +155,43 @@ int main(int argc, char *argv[])
 			if((std::cin.rdstate()) != 0) {
 				std::cerr << "End of input stream reached" << std::endl;
 				//FINAL RUN TIME IS THE ADDITION OF THE RUN TIME FOR EACH BLOCK
-				std::cerr << "Final run time  = "<<final<<std::endl;
+				// std::cerr << "Final run time  = "<<final<<std::endl;
 				exit(1);
 			}
 			//--------------------RF-FRONT END-----------------------
 			//STD CERR WAS USED FOR DEBUGGING MOST OF THE ISSUES
 			//std::cerr << "Read block " << block_id << std::endl;
 			auto block_start = std::chrono::high_resolution_clock::now();
-			std::cerr<<"Mono Cutoff: "<<mono_Fc<<std::endl;
+			// std::cerr<<"Mono Cutoff: "<<mono_Fc<<std::endl;
 
 			split_audio_iq(block_data, i_data, q_data);
 
-			std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
+			// std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
 			//std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
 			//COULD IMPLEMENT A FUNCTION THAT DOES CONVOLUTION FOR I AND Q IN ONE RUN
 
-			conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
-			conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
+			conv_ds_fast(filt_i, i_data, RF_h, rf_decim, state_i);
+			conv_ds_fast(filt_q, q_data, RF_h, rf_decim, state_q);
 			FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
 
 			//--------------------END OF RF-FRONT END-------------------
 
-			std::cerr << "I data size: "<< i_data.size() << std::endl;
-			std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
-			std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
-			std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
+			// std::cerr << "I data size: "<< i_data.size() << std::endl;
+			// std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
+			// std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
+			// std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
 			
 			//-------------------MONO PATH START------------------------
 			//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
 
-			std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
-			std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
+			// std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
+			// std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
 			
 			conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
 			
 			//-------------------MONO PATH END--------------------------
 
-			std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
+			// std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
 			
 			//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
 			auto block_end = std::chrono::high_resolution_clock::now();
