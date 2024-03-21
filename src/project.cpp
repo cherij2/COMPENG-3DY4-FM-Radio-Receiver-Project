@@ -194,6 +194,38 @@ int main(int argc, char *argv[])
 	BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
 	
+	//RDS STUFF
+	float RDSFb = 54000;
+	float RDSFe = 60000;
+
+	std::vector<float> rds_BPF_coeffs;
+	std::vector<float> rds_filtered;
+	std::vector<float> state_rds_bb(num_Taps-1, 0.0);
+
+
+	std::vector<float> CR_rds_BPF_coeffs;
+	std::vector<float> CR_rds_filtered;
+	std::vector<float> CR_state_rds(num_Taps-1, 0.0);
+
+	std::vector<float> rds_nonlin;
+
+	float CR_RDSFb = 113500;
+	float CR_RDSFe = 114500;
+
+	//for BLOCK DELAY RDS
+	std::vector<float> rds_processed_delay;
+	std::vector<float> rds_state_delay((num_Taps-1)/2, 0.0);
+
+	State rds_state = {0.0, 0.0, 1.0, 0.0, 0, 1.0};
+	float rds_lockInFreq = 114000;
+	std::vector<float> rds_NCO_outp;
+	float rds_normBandwidth = 0.003;
+	float rds_phaseAdjust = 0.0;
+	float rds_ncoScale = 0.5;
+
+//BPF COEFFICIENTS FOR RDS BASEBAND
+	BPFCoeffs(RDSFb, RDSFb, IF_Fs, num_Taps, rds_BPF_coeffs);
+
 
 	float final = 0.0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	auto full_signal_start = std::chrono::high_resolution_clock::now();
@@ -342,6 +374,35 @@ int main(int argc, char *argv[])
 			// }
 
 			//-------------------STEREO PATH END--------------------------
+
+			//-------------------RDS PATH START--------------------------
+			std::cerr<<"rds BPF coeffs: "<<rds_BPF_coeffs.size()<<std::endl;
+
+			conv_ds_fast(rds_filtered, demod, rds_BPF_coeffs, 1, state_rds_bb);
+
+			std::cerr<<"rds_filtered size: "<<rds_filtered.size()<<std::endl;
+
+			//SQAURING NONLINEARITY
+			for(int i = 0; i < rds_filtered.size(); i++) {
+				rds_nonlin[i] = rds_filtered[i] * rds_filtered[i];
+			}
+
+			//ALL PASS FILTER
+			delayBlock(rds_filtered, rds_processed_delay, rds_state_delay);
+
+			//BPF CARRIER RECOVERY
+			conv_ds_fast(CR_rds_filtered, rds_nonlin, CR_rds_BPF_coeffs, 1, CR_state_rds);
+
+			//PLL CARRIER RECOVERY
+			fmPll(pilot_filtered, rds_NCO_outp, rds_lockInFreq, IF_Fs, rds_ncoScale, rds_phaseAdjust, rds_normBandwidth, rds_state);
+
+
+
+
+
+
+
+			//-------------------RDS PATH END--------------------------
 
 
 			std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
