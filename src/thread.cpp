@@ -1,13 +1,5 @@
 #include "dy4.h"
 #include "thread.h"
-#include <mutex>
-#include <condition_variable>
-#include <memory>
-#include <queue>
-#include <thread>
-#include <iostream>
-#include <vector>
-#include <atomic>
 
 std::atomic<bool> done{false};
 
@@ -90,9 +82,29 @@ int main() {
 // Placeholder function for data production
 bool done = false; // Global flag to control the thread loop execution
 
-std::vector<float> produce_data() {
-    // Your data production logic
-    return std::vector<float>{ /* ... */ };
+std::vector<float> produce_data(int mode) {
+    std::vector<float> i_data, q_data;
+	std::vector<float> filt_i, filt_q;
+    std::vector<float> demod;
+    std::vector<float> state_i(num_Taps, 0.0);
+	std::vector<float> state_q(num_Taps, 0.0);
+    while (true){
+        for(unsigned int block_id = 0; ; block_id++){
+            std::vector<float> block_data(BLOCK_SIZE)
+            readStdinBlockData(BLOCK_SIZE, block_id, block_data);
+            if((std::cin.rdstate()) != 0){
+                std::cerr<<"End of input stream reached" << std::endl;
+                exit(1);
+            }
+            split_audio_iq(block_data, i_data, q_data);
+            conv_ds_fast(filt_i, i_data, RF_h, rf_decim, state_i);
+            conv_ds_fast(filt_q, q_data, RF_h, rf_decim, state_q);
+            FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+        return demod;
+        }
+    }
+    
+
 }
 
 // Placeholder function for data consumption
