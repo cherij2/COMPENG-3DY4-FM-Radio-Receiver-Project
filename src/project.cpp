@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 
 	// DEFAULT VALUES ASSUMING MODE 0
 	int RF_Fs = 2400e3;
-	float RF_Fc = 100e3;
+	int RF_Fc = 99e3;
 	float IF_Fs = 240e3;
 	float mono_Fc;
 	float num_Taps = 101; //if too high of a value takes too long to run
@@ -116,12 +116,17 @@ int main(int argc, char *argv[])
 		audio_expan = 147;
 		BLOCK_SIZE = audio_decim*audio_expan;
 	} else if(mode == 3){ //resampling needed in this mode
+	//when playing around with the IF Fs numbers
+	//when IF Fs/2 < 100e3 then there is distortion in the mode
 		RF_Fs = 960e3;
 		IF_Fs = 120e3;
 		rf_decim = 8;
 		audio_decim = 400;
+		//audio_decim = 800;
 		audio_expan = 147;
-		BLOCK_SIZE = 15*audio_decim*rf_decim*2;
+		BLOCK_SIZE = 15*audio_decim*rf_decim;
+		//RF_Fc = 60e3;
+		//num_Taps = 1001;
 	}
 	std::cerr<<"audio expan: "<<audio_expan<<" audio decim: "<<audio_decim<<std::endl;
 	std::cerr<<"min between these two: " <<(audio_expan/audio_decim)<<" "<<(IF_Fs/2)<<" and this valie: "<<IF_Fs/2<<std::endl;
@@ -144,12 +149,6 @@ int main(int argc, char *argv[])
 
 	float STnumTaps = 101;
 
-	float errorD = 0.0;
-	float integrator = 0.0;
-	float phaseEst = 0.0;
-	float feedbackI = 1.0;
-	float feedbackQ = 0.0;
-	int trigOffset = 0;
 
 	std::vector<float> pilot_BPF_coeffs;
 	std::vector<float> stereo_BPF_coeffs;
@@ -187,8 +186,19 @@ int main(int argc, char *argv[])
 	std::vector<float> processed_data;
 	std::vector<float> stereo_data;
 	//LPF COEFFICIENTS FOR FRONT END AND MONO PATH
+	
 	gainimpulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h, audio_expan); //FRONT END
 	gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, final_coeffs, audio_expan);//MONO PATH
+	std::cerr<<"num_Taps: "<<num_Taps<<" audio expan: "<<audio_expan<<" audioexpan*num_taps "<<audio_expan*num_Taps<<std::endl;
+	std::cerr<<"final_coeffs size: "<<final_coeffs.size()<<std::endl;
+	std::ofstream outfile("final_coeffsmode2.txt");
+	for (int i = 0; i < final_coeffs.size(); i++) {
+        outfile << final_coeffs[i] << std::endl;
+    }
+	outfile.close();
+	// for (int i = 0; i < final_coeffs.size(); i++){
+	// 	std::cerr<<final_coeffs[i]<<std::endl;
+	// }
 
 	//BPF COEFFICIENTS FOR STEREO PILOT FREQUENCY 1ST and STEREOBAND 2ND
 	BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
@@ -196,13 +206,14 @@ int main(int argc, char *argv[])
 	
 
 	float final = 0.0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
-	auto full_signal_start = std::chrono::high_resolution_clock::now();
+
 	while (true){
 		for (unsigned int block_id = 0;  ; block_id++) {
+			std::cerr<<"RF FC = "<<RF_Fc<<std::endl;
 			std::vector<float> block_data(BLOCK_SIZE);
 			readStdinBlockData(BLOCK_SIZE, block_id, block_data); //block_data holds the data for one block
 			if((std::cin.rdstate()) != 0) {
-			//if(block_id == 4){
+			//if(block_id == 2){
 				std::cerr << "End of input stream reached" << std::endl;
 				//FINAL RUN TIME IS THE ADDITION OF THE RUN TIME FOR EACH BLOCK
 				std::cerr << "Final run time  = "<<final<<std::endl;
@@ -267,7 +278,7 @@ int main(int argc, char *argv[])
 			conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
 			// for (int i = 0; i<stereo_BPF_coeffs.size(); i++){
 			// 	std::cerr<<"BPF within 22k and 54k: "<<stereo_BPF_coeffs[i]<<std::endl;
-
+	
 
 			// }
 			std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
@@ -353,14 +364,14 @@ int main(int argc, char *argv[])
 			final += block_time.count();
 			///------------BELOW WRITES THE MONO PATH------------
 			//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-			// std::vector<short int> audio_data(processed_data.size());
-			// for (unsigned int k = 0; k < processed_data.size(); k++){
-			// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			std::vector<short int> audio_data(processed_data.size());
+			for (unsigned int k = 0; k < processed_data.size(); k++){
+				if (std::isnan(processed_data[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
 			// std::vector<short int> audio_data(left_stereo.size());
@@ -371,7 +382,7 @@ int main(int argc, char *argv[])
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
-			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
+			// //------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
 			// std::vector<short int> audio_data(right_stereo.size());
 			// for (unsigned int k = 0; k < right_stereo.size(); k++){
 			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
@@ -380,14 +391,14 @@ int main(int argc, char *argv[])
 			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
-			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
-			std::vector<short int> audio_data(stereo_data.size());
-			for (unsigned int k = 0; k < stereo_data.size(); k++){
-				if (std::isnan(stereo_data[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			}
-			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			// //---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
+			// std::vector<short int> audio_data(stereo_data.size());
+			// for (unsigned int k = 0; k < stereo_data.size(); k++){
+			// 	if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 		}//ends for
 
