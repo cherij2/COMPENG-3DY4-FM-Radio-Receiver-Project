@@ -88,8 +88,8 @@ void rf_thread(int mode)  {                        // Continue producing until d
     values.configMode(mode);
     std::vector<float> i_data, q_data;
 	std::vector<float> filt_i, filt_q;
-    std::vector<float> state_i(values.num_Taps, 0.0);
-	std::vector<float> state_q(values.num_Taps, 0.0);
+    std::vector<float> state_i(values.num_Taps-1, 0.0);
+	std::vector<float> state_q(values.num_Taps-1, 0.0);
     std::vector<float> RF_h;
     std::vector<float> demod;
     float prev_i = 0.0;
@@ -119,14 +119,95 @@ void rf_thread(int mode)  {                        // Continue producing until d
 }
 
 // // Function representing the work of the audio thread (the consumer)
-// void audio_thread() {
-//     while (!done) {                           // Continue consuming until done is true
-//         std::shared_ptr<std::vector<float>> data_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
-//         consume_data(*data_ptr);              // Consume data (placeholder function)
-//     }
-// }
+void audio_thread(int mode) {
+    Mode values
+    values.configMode(mode);
+    std::vector<float> state_mono(values.num_Taps-1, 0.0);
+    std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
+    std::vector<float> state_pilot(values.num_Taps-1, 0.0); // band pass 18.5khz-19.5khz (noise one)
+    std::vector<float> state_mixer(values.num_Taps-1, 0.0); // multiple stereo bands passes floats together
+	
+    std::vector<float> pilot_BPF_coeffs;
+	std::vector<float> stereo_BPF_coeffs;
+	std::vector<float> pilot_filtered;
+	std::vector<float> stereo_filtered;
+    
+	// //MIXER VARIABLES
+	std::vector<float> mixer;
+	std::vector<float> mixer_coeffs;
+	std::vector<float> mixer_filtered;
 
-// // Entry point of the program
+	// //for BLOCK DELAY
+	std::vector<float> mono_processed_delay;
+	std::vector<float> state_delay((num_Taps-1)/2, 0.0);
+
+	std::vector<float> right_stereo;
+	std::vector<float> left_stereo;
+
+	State state = {0.0, 0.0, 1.0, 0.0, 0, 1.0};
+	float pilot_lockInFreq = 19000;
+	std::vector<float> pilot_NCO_outp;
+	float normBandwidth = 0.01;
+	float phaseAdjust = 0.0;
+	float ncoScale = 2.0;
+    
+    float pilotFb = 18500;
+	float pilotFe = 19500;
+	float stereoFb = 22000;
+	float stereoFe = 54000;
+
+	std::vector<float> processed_data;
+	std::vector<float> stereo_data;
+
+	gainimpulseResponseLPF(values.IF_Fs*values.audio_expan, values.mono_Fc, values.num_Taps*values.audio_expan, final_coeffs, values.audio_expan);//MONO PATH
+
+	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
+	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
+
+    while (!done) {                           // Continue consuming until done is true
+        if(tsQueue.empty() && !tsQueue.wait_and_pop()) { // if queue is empty and there is nothing else that is coming in, then break 
+            break;
+        }
+
+        std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+
+        delayBlock(demod, mono_processed_delay, state_delay);
+        conv_rs(processed_data, mono_processed_delay, final_coeffs, audio_decim, values.audio_expan, state_mono);
+
+        fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
+        conv_ds_fast(pilot_filtered, demod, pilot_BPF_coeffs, 1, state_pilot);
+        conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
+
+		mixer.resize(stereo_filtered.size(), 0.0);
+		for(int i = 0; i < stereo_filtered.size(); i++) {
+            mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
+        }
+
+        conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
+        conv_rs(mixer_filtered, mixer, final_coeffs, audio_decim, values.audio_expan, state_mixer);
+
+        right_stereo.resize(mixer_filtered.size());
+        left_stereo.resize(mixer_filtered.size());
+        for(int i = 0; i < mixer_filtered.size(); i++) {
+            //!!!! is equation correct?
+            right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
+            left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
+        }
+
+        stereo_data.resize(right_stereo.size()*2);
+        int i = 0;
+        for (int k = 0; k< right_stereo.size(); k++){
+            stereo_data[i] = left_stereo[k];
+            stereo_data[i+1] = right_stereo[k];
+            i += 2;
+        }
+
+
+        std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+    }
+}
+
+// Entry point of the program
 // int main() {
 //     std::thread producer(rf_thread);          // Create the producer thread
 //     std::thread consumer(audio_thread);       // Create the consumer thread
@@ -170,9 +251,4 @@ std::vector<float> produce_data(int mode) {
             
         }
     }
-}
-
-// Placeholder function for data consumption
-void consume_data(const std::vector<float>& data) {
-    // Your data consumption logic
 }
