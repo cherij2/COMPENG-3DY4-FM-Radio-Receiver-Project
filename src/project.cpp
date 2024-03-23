@@ -159,12 +159,7 @@ int main(int argc, char *argv[])
 
 	float STnumTaps = 101;
 
-	float errorD = 0.0;
-	float integrator = 0.0;
-	float phaseEst = 0.0;
-	float feedbackI = 1.0;
-	float feedbackQ = 0.0;
-	int trigOffset = 0;
+
 
 	std::vector<float> pilot_BPF_coeffs;
 	std::vector<float> stereo_BPF_coeffs;
