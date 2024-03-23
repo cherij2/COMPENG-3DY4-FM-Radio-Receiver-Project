@@ -91,10 +91,11 @@ int main(int argc, char *argv[])
 	}
 	std::cerr << "Operating in mode " << mode << std::endl;
 
-	for (int i = 0; i < 233; i++ ){
-		std::cerr<<"index i: "<<i<<std::endl;
-		std::vector<float>final_output = produce_data(mode);
-	}
+	// for (int i = 0; i < 233; i++ ){
+	// 	std::cerr<<"index i: "<<i<<std::endl;
+	// 	std::vector<float>final_output = produce_data(mode);
+	// }
+	rf_thread(mode);
 	
 	
 	// Mode values;

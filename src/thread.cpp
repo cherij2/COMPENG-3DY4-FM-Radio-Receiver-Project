@@ -47,19 +47,53 @@ public:
         std::lock_guard<std::mutex> lock(m);  // Lock the mutex to synchronize access to the empty check
         return q.empty();                     // Return whether the queue is empty
     }
+
+    size_t size() const {
+        std::lock_guard<std::mutex> lock(m);
+        return q.size(); // Get the size of the queue
+    }
 };
 
 // ==================================
 
-// ThreadSafeQueue<std::vector<float>> tsQueue; // Global instance of the thread-safe queue
+ThreadSafeQueue<std::vector<float>> tsQueue; // Global instance of the thread-safe queue
 
 // // Function representing the work of the RF thread (the producer)
-// void rf_thread() {
-//     while (!done) {                           // Continue producing until done is true
-//         std::vector<float> fm_demodulated_data = produce_data(); // Produce data (placeholder function)
-//         tsQueue.push(std::move(fm_demodulated_data)); // Push the produced data onto the queue
-//     }
-// }
+void rf_thread(int mode)  {                        // Continue producing until done is true
+    Mode values;
+    values.configMode(mode);
+    std::vector<float> i_data, q_data;
+	std::vector<float> filt_i, filt_q;
+    std::vector<float> state_i(values.num_Taps, 0.0);
+	std::vector<float> state_q(values.num_Taps, 0.0);
+    std::vector<float> RF_h;
+    std::vector<float> demod;
+    float prev_i = 0.0;
+    float prev_q = 0.0;
+    gainimpulseResponseLPF(values.RF_Fs, values.RF_Fc, values.num_Taps, RF_h, values.audio_expan);
+    while (true){
+        for(unsigned int block_id = 0; ; block_id++){
+            //std::cerr<<"Block id "<<block_id<<std::endl;
+            std::vector<float> block_data(values.BLOCK_SIZE);
+            readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
+            if((std::cin.rdstate()) != 0){
+                std::cerr<<"End of input stream reached" << std::endl;
+                exit(1);
+            }
+            std::cerr<<"Block id "<<block_id<<std::endl;
+            split_audio_iq(block_data, i_data, q_data);
+            conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
+            conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
+            FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+            //std::vector<float> fm_demodulated_data = produce_data(); // Produce data (placeholder function)
+            std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
+            tsQueue.push(demod);
+            
+        }
+    }
+        // Push the produced data onto the queue
+
+}
 
 // // Function representing the work of the audio thread (the consumer)
 // void audio_thread() {
@@ -110,11 +144,9 @@ std::vector<float> produce_data(int mode) {
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-        return demod;
+            
         }
     }
-    
-
 }
 
 // Placeholder function for data consumption
