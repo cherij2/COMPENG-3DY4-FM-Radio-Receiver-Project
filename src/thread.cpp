@@ -52,6 +52,30 @@ public:
         std::lock_guard<std::mutex> lock(m);
         return q.size(); // Get the size of the queue
     }
+        
+    // Method to print the addresses of the contents of the queue
+    void print_contents() const {
+        std::lock_guard<std::mutex> lock(m);
+        std::queue<std::shared_ptr<T>> temp_queue = q; // Make a copy of the queue
+
+        std::cout << "Queue contents' addresses: [";
+        while (!temp_queue.empty()) {
+            const auto& item_ptr = temp_queue.front(); // Access the shared_ptr to the front element
+            temp_queue.pop(); // Remove the element from the temporary queue
+
+            if (item_ptr) { // Check if the shared_ptr actually points to an object
+                // Print the address pointed to by the shared_ptr
+                std::cout << static_cast<const void*>(item_ptr.get()) << " ";
+            } else {
+                std::cout << "nullptr "; // In case the shared_ptr is null
+            }
+
+            if (!temp_queue.empty()) {
+                std::cout << ", "; // Print a comma unless it's the last element
+            }
+        }
+        std::cout << "]" << std::endl;
+    }
 };
 
 // ==================================
@@ -78,6 +102,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
             if((std::cin.rdstate()) != 0){
                 std::cerr<<"End of input stream reached" << std::endl;
+                tsQueue.print_contents();
                 exit(1);
             }
             std::cerr<<"Block id "<<block_id<<std::endl;
@@ -85,10 +110,8 @@ void rf_thread(int mode)  {                        // Continue producing until d
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            //std::vector<float> fm_demodulated_data = produce_data(); // Produce data (placeholder function)
-            std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
+            // std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             tsQueue.push(demod);
-            
         }
     }
         // Push the produced data onto the queue
