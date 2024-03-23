@@ -1,6 +1,14 @@
 #include "dy4.h"
 #include "RFfront.h"
 
+
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
+	std::vector<char> raw_data(num_samples);
+	std::cin.read(reinterpret_cast<char*>(&raw_data[0]), num_samples*sizeof(char));
+	for (int k=0; k<(int)num_samples; k++){
+		block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0);
+	}
+}
 void downsample(const std::vector<int> &input_signal, std::vector<int> &output_signal, int decimation_factor)
 {
     // Calculate the size of the downsampled vector

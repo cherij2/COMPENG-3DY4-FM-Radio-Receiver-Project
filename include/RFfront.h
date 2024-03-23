@@ -7,6 +7,9 @@
 #include <vector>
 #include <math.h>
 
+
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data);
+
 void downsample(const std::vector<int> &input_signal, std::vector<int> &output_signal, int decimation_factor);
 
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q);

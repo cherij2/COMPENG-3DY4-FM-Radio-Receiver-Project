@@ -4,7 +4,7 @@ CC = g++
 CFLAGS = -c -Wall -O3 -std=c++17
 LDFLAGS =
 INCLUDE = -I../include/
-SOURCES = project.cpp iofunc.cpp filter.cpp  fourier.cpp  genfunc.cpp  logfunc.cpp RFfront.cpp mode.cpp
+SOURCES = project.cpp iofunc.cpp filter.cpp  fourier.cpp  genfunc.cpp  logfunc.cpp RFfront.cpp mode.cpp thread.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 EXECUTABLE = project
 

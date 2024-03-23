@@ -17,7 +17,7 @@
 
 template<typename T>
 class ThreadSafeQueue;
-std::vector<float> produce_data();
+std::vector<float> produce_data(int mode);
 void consume_data();
 
 
