@@ -101,8 +101,8 @@ void rf_thread(int mode)  {                        // Continue producing until d
             //std::cerr<<"Block id "<<block_id<<std::endl;
             std::vector<float> block_data(values.BLOCK_SIZE);
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
-            //if((std::cin.rdstate()) != 0){
-            if(block_id == 100){
+            if((std::cin.rdstate()) != 0){
+            //if(block_id == 100){
                 std::cerr<<"End of input stream reached" << std::endl;
                 tsQueue.print_contents();
                 std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
@@ -177,8 +177,8 @@ void audio_thread(int mode) {
         }
 
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
-        std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
-        i++;
+        // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
+        // i++;
         if (demod_ptr) {
             // Dereference the pointer to obtain the vector
             const std::vector<float>& demod_vector = *demod_ptr;
@@ -186,22 +186,29 @@ void audio_thread(int mode) {
             // Print out the contents of the vector
             std::cerr<<"vector size "<<demod_vector.size()<<std::endl;
         }
+        
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
+        //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
         conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
+        //std::cerr<<"processed data size: "<<processed_data.size()<<std::endl;
 
         //fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
         conv_ds_fast(pilot_filtered, *demod_ptr, pilot_BPF_coeffs, 1, state_pilot);
         conv_ds_fast(stereo_filtered, *demod_ptr, stereo_BPF_coeffs, 1, state_stereo);
+
+        // std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<<"stereo filtered size: "<<stereo_filtered.size()<<std::endl;
 
         fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
 		mixer.resize(stereo_filtered.size(), 0.0);
 		for(int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
         }
+        
 
         
         conv_rs(mixer_filtered, mixer, final_coeffs, values.audio_decim, values.audio_expan, state_mixer);
 
+        // std::cerr<<"mixer size: "<<mixer.size()<<" mixer filtered size: "<<mixer_filtered.size()<<std::endl;
         right_stereo.resize(mixer_filtered.size());
         left_stereo.resize(mixer_filtered.size());
         for(int i = 0; i < mixer_filtered.size(); i++) {
@@ -209,6 +216,7 @@ void audio_thread(int mode) {
             right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
             left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
         }
+        // std::cerr<<"left size: "<<left_stereo.size()<<" right stereo size: "<<right_stereo.size()<<std::endl;
 
         stereo_data.resize(right_stereo.size()*2);
         int i = 0;
@@ -217,8 +225,16 @@ void audio_thread(int mode) {
             stereo_data[i+1] = right_stereo[k];
             i += 2;
         }
+        // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
 
+        std::vector<short int> audio_data(processed_data.size());
+        for (unsigned int k = 0; k < processed_data.size(); k++){
+            if (std::isnan(processed_data[k])) audio_data[k] = 0;
+            else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 
+        }
+        //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+        fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
         //std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
     }
 }
