@@ -104,8 +104,8 @@ void rf_thread(int mode)  {                        // Continue producing until d
             if((std::cin.rdstate()) != 0){
             //if(block_id == 100){
                 std::cerr<<"End of input stream reached" << std::endl;
-                tsQueue.print_contents();
-                std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
+                //tsQueue.print_contents();
+                //std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
                 exitwhile = true;
                 std::cerr<<"done flag "<<done<<std::endl;
                 done = true;
@@ -117,7 +117,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
+            //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             tsQueue.push(demod);
         }
     }
@@ -129,7 +129,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
 void audio_thread(int mode) {
     Mode values;
     values.configMode(mode);
-    std::cerr<<"ENTERED AUDIO THREAD"<<std::endl;
+    //std::cerr<<"ENTERED AUDIO THREAD"<<std::endl;
     std::vector<float> state_mono(values.num_Taps-1, 0.0);
     std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
     std::vector<float> state_pilot(values.num_Taps-1, 0.0); // band pass 18.5khz-19.5khz (noise one)
@@ -179,17 +179,17 @@ void audio_thread(int mode) {
             exitwhile = true;
             break;
         }
-
+        //std::cerr<<"test"<<std::endl;
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
         // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
         // i++;
-        if (demod_ptr) {
-            // Dereference the pointer to obtain the vector
-            const std::vector<float>& demod_vector = *demod_ptr;
+        // if (demod_ptr) {
+        //     // Dereference the pointer to obtain the vector
+        //     const std::vector<float>& demod_vector = *demod_ptr;
 
-            // Print out the contents of the vector
-            std::cerr<<"demid vector size "<<demod_vector.size()<<std::endl;
-        }
+        //     // Print out the contents of the vector
+        //     std::cerr<<"demid vector size "<<demod_vector.size()<<std::endl;
+        // }
         
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
         //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
@@ -232,23 +232,23 @@ void audio_thread(int mode) {
         // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
         ///------------BELOW WRITES THE MONO PATH------------
 	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-	// 		// std::vector<short int> audio_data(processed_data.size());
-	// 		// for (unsigned int k = 0; k < processed_data.size(); k++){
-	// 		// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
-	// 		// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// std::vector<short int> audio_data(processed_data.size());
+			// for (unsigned int k = 0; k < processed_data.size(); k++){
+			// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 
-	// 		// }
-	// 		// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-	// 		// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 	// 		//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
-			std::vector<short int> audio_data(left_stereo.size());
-			for (unsigned int k = 0; k < left_stereo.size(); k++){
-				if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			}
-			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			// std::vector<short int> audio_data(left_stereo.size());
+			// for (unsigned int k = 0; k < left_stereo.size(); k++){
+			// 	if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
 			// std::vector<short int> audio_data(right_stereo.size());
@@ -260,14 +260,14 @@ void audio_thread(int mode) {
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
-			// std::vector<short int> audio_data(stereo_data.size());
-			// for (unsigned int k = 0; k < stereo_data.size(); k++){
-			// 	if (std::isnan(stereo_data[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-        //std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+			std::vector<short int> audio_data(stereo_data.size());
+			for (unsigned int k = 0; k < stereo_data.size(); k++){
+				if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+        
     }
 }
 

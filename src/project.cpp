@@ -95,6 +95,8 @@ int main(int argc, char *argv[])
 	// 	std::cerr<<"index i: "<<i<<std::endl;
 	// 	std::vector<float>final_output = produce_data(mode);
 	// }
+	// rf_thread(mode);
+	// audio_thread(mode);
 	std::thread rf_producer(rf_thread, mode);  // Create the RF producer thread
     std::thread audio_consumer(audio_thread, mode);  // Create the audio consumer thread
 
