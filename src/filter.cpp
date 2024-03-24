@@ -89,55 +89,6 @@ void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::v
 }
 
 
-// void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float &integrator, float &phaseEst, float &feedbackI, float &feedbackQ\
-// , int &trigOffset, float &errorD, float ncoScale, float phaseAdjust, float normBandwidth) {
-//     // Constants for the loop filter
-//     const float Cp = 2.666;
-//     const float Ci = 3.555;
-// 	std::cerr<< "norm Bandwidth: "<<normBandwidth<<"\tphaseAdjust: "<<phaseAdjust<<"\tncoScale: "<<ncoScale<<std::endl;
-//     // Calculate gains
-//     const float Kp = normBandwidth * Cp;
-//     const float Ki = normBandwidth * normBandwidth * Ci;
-
-//     // Resize and initialize output vector
-//     ncoOut.resize(pllIn.size() + 1);
-//     ncoOut[0] = 1.0;
-// 	trigOffset = 0;
-// 	integrator = 0;
-// 	phaseEst = 0.0;
-
-//     // Loop through input samples
-//     for (size_t k = 0; k < pllIn.size(); ++k) {
-//         // Phase detector
-//         float errorI = pllIn[k] * feedbackI; // Infreqor
-//         float errorQ = pllIn[k] * (-feedbackQ); //freqe error
-
-//         // Arc tangent phase discriminator
-//         float errorD = std::atan2(errorQ, errorI);
-
-//         // Loop filter
-//         integrator += Ki * errorD;
-
-//         // Update phase estimate
-//         phaseEst += Kp * errorD + integrator;
-
-//         // Update internal oscillator state
-//         trigOffset++;
-
-//         float trigArg = 2 * M_PI * (freq / Fs) * trigOffset + phaseEst;
-//         feedbackI = std::cos(trigArg);
-//         feedbackQ = std::sin(trigArg);
-//         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
-// 		// if(k < 7 || k > pllIn.size() - 7){
-// 		// std::cerr<<"index: "<<k<<"\ttrig arg: "<<trigArg<<"\tfeedbackI: "<<feedbackI<<"\tncoOut: "<<ncoOut[k]<<"\tfeedbackQ: "<<feedbackQ<<"\ttrigoffset"<<trigOffset<<"\tPLLin: "<<pllIn[k]<<"\tphaseEst: "<<phaseEst<<"\tintegrator"<<integrator<<std::endl;}
-// 		//std::cerr<<"ncdOut at index"<< k << " + 1 "<<ncoOut[k+1]<<std::endl;
-		
-// 	}
-
-// 	// std::cerr<<"ncoOUT at [0]: "<<ncoOut[0]<<"\tncrOut last element: "<<ncoOut[pllIn.size()]<<std::endl;
-
-// 	// std::cerr<<"ncoOUT size: "<<ncoOut.size()<<std::endl;
-// }
 
 void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale , float phaseAdjust, float normBandwidth , State& state) {
     const float Cp = 2.666;

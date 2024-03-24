@@ -44,12 +44,12 @@ public:
 
     // Checks if the queue is empty
     bool empty() const {
-        std::lock_guard<std::mutex> lock(m);  // Lock the mutex to synchronize access to the empty check
+        //std::lock_guard<std::mutex> lock(m);  // Lock the mutex to synchronize access to the empty check
         return q.empty();                     // Return whether the queue is empty
     }
 
     size_t size() const {
-        std::lock_guard<std::mutex> lock(m);
+        //std::lock_guard<std::mutex> lock(m);
         return q.size(); // Get the size of the queue
     }
         
@@ -168,12 +168,13 @@ void audio_thread(int mode) {
 	std::vector<float> stereo_data;
 
     std::vector<float> final_coeffs;
+
     bool exitwhile = false;
 	gainimpulseResponseLPF(values.IF_Fs*values.audio_expan, values.mono_Fc, values.num_Taps*values.audio_expan, final_coeffs, values.audio_expan);//MONO PATH
 
 	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
-    int i = 0;
+    //int i = 0;
     while (!exitwhile) {                           // Continue consuming until done is true
         if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break 
             exitwhile = true;
@@ -190,11 +191,12 @@ void audio_thread(int mode) {
         //     // Print out the contents of the vector
         //     std::cerr<<"demid vector size "<<demod_vector.size()<<std::endl;
         // }
-        
+        //-------------MONO PATH START--------------------------------
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
         //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
         conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
         //std::cerr<<"processed data size: "<<processed_data.size()<<std::endl;
+        //-------------MONO PATH END----------------------------------
 
         //fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
         conv_ds_fast(pilot_filtered, *demod_ptr, pilot_BPF_coeffs, 1, state_pilot);
@@ -204,7 +206,7 @@ void audio_thread(int mode) {
 
         fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
 		mixer.resize(stereo_filtered.size(), 0.0);
-		for(int i = 0; i < stereo_filtered.size(); i++) {
+		for(unsigned int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
         }
         
@@ -215,19 +217,23 @@ void audio_thread(int mode) {
         // std::cerr<<"mixer size: "<<mixer.size()<<" mixer filtered size: "<<mixer_filtered.size()<<std::endl;
         right_stereo.resize(mixer_filtered.size());
         left_stereo.resize(mixer_filtered.size());
-        for(int i = 0; i < mixer_filtered.size(); i++) {
+        for(unsigned int i = 0; i < mixer_filtered.size(); i++) {
             //!!!! is equation correct?
             right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
             left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
         }
         // std::cerr<<"left size: "<<left_stereo.size()<<" right stereo size: "<<right_stereo.size()<<std::endl;
-
+        // std::cerr<<"right stereo size" <<right_stereo.size()<<std::endl;
+        // std::cerr<<"left stereo size" <<left_stereo.size()<<std::endl;
         stereo_data.resize(right_stereo.size()*2);
         int i = 0;
-        for (int k = 0; k< right_stereo.size(); k++){
+        for (unsigned int k = 0; k< right_stereo.size(); k++){
             stereo_data[i] = left_stereo[k];
             stereo_data[i+1] = right_stereo[k];
             i += 2;
+        }
+        for (int i = 0; i < left_stereo.size();i++){
+            std::cerr<<"index "<<i<< "\tleft at i "<<left_stereo[i]<<"\trightstereo at i "<<right_stereo[i]<<"\tstereo_data at i "<<stereo_data[i]<<std::endl;
         }
         // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
         ///------------BELOW WRITES THE MONO PATH------------
