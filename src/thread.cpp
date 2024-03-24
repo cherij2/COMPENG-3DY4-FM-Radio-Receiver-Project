@@ -21,7 +21,7 @@ public:
         q.push(data);                         // Push the data onto the queue
         cv.notify_one();                      // Notify one waiting thread that there is new data available
     }
-    
+
     // Waits for an element to be available and pops it from the queue
     std::shared_ptr<T> wait_and_pop() {
         std::unique_lock<std::mutex> lock(m); // Unique lock allows the lock to be temporarily released
@@ -52,7 +52,7 @@ public:
         //std::lock_guard<std::mutex> lock(m);
         return q.size(); // Get the size of the queue
     }
-        
+
     // Method to print the addresses of the contents of the queue
     void print_contents() const {
         std::lock_guard<std::mutex> lock(m);
@@ -134,12 +134,12 @@ void audio_thread(int mode) {
     std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
     std::vector<float> state_pilot(values.num_Taps-1, 0.0); // band pass 18.5khz-19.5khz (noise one)
     std::vector<float> state_mixer(values.num_Taps-1, 0.0); // multiple stereo bands passes floats together
-	
+
     std::vector<float> pilot_BPF_coeffs;
 	std::vector<float> stereo_BPF_coeffs;
 	std::vector<float> pilot_filtered;
 	std::vector<float> stereo_filtered;
-    
+
 	// //MIXER VARIABLES
 	std::vector<float> mixer;
 	std::vector<float> mixer_coeffs;
@@ -158,7 +158,7 @@ void audio_thread(int mode) {
 	float normBandwidth = 0.01;
 	float phaseAdjust = 0.0;
 	float ncoScale = 2.0;
-    
+
     float pilotFb = 18500;
 	float pilotFe = 19500;
 	float stereoFb = 22000;
@@ -176,7 +176,7 @@ void audio_thread(int mode) {
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
     //int i = 0;
     while (!exitwhile) {                           // Continue consuming until done is true
-        if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break 
+        if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break
             exitwhile = true;
             break;
         }
@@ -209,9 +209,9 @@ void audio_thread(int mode) {
 		for(unsigned int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
         }
-        
 
-        
+
+
         conv_rs(mixer_filtered, mixer, final_coeffs, values.audio_decim, values.audio_expan, state_mixer);
 
         // std::cerr<<"mixer size: "<<mixer.size()<<" mixer filtered size: "<<mixer_filtered.size()<<std::endl;
@@ -232,9 +232,7 @@ void audio_thread(int mode) {
             stereo_data[i+1] = right_stereo[k];
             i += 2;
         }
-        for (int i = 0; i < left_stereo.size();i++){
-            std::cerr<<"index "<<i<< "\tleft at i "<<left_stereo[i]<<"\trightstereo at i "<<right_stereo[i]<<"\tstereo_data at i "<<stereo_data[i]<<std::endl;
-        }
+        
         // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
         ///------------BELOW WRITES THE MONO PATH------------
 	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
@@ -273,7 +271,7 @@ void audio_thread(int mode) {
 			}
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-        
+
     }
 }
 
@@ -318,7 +316,7 @@ std::vector<float> produce_data(int mode) {
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            
+
         }
     }
 }
