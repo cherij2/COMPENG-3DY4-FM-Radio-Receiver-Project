@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 	std::vector<float> processed_data;
 	std::vector<float> stereo_data;
 	//LPF COEFFICIENTS FOR FRONT END AND MONO PATH
-	
+
 	gainimpulseResponseLPF(RF_Fs, RF_Fc, num_Taps, RF_h, audio_expan); //FRONT END
 	gainimpulseResponseLPF(IF_Fs*audio_expan, mono_Fc, num_Taps*audio_expan, final_coeffs, audio_expan);//MONO PATH
 	std::cerr<<"num_Taps: "<<num_Taps<<" audio expan: "<<audio_expan<<" audioexpan*num_taps "<<audio_expan*num_Taps<<std::endl;
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 	//BPF COEFFICIENTS FOR STEREO PILOT FREQUENCY 1ST and STEREOBAND 2ND
 	BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
-	
+
 
 	float final = 0.0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 
@@ -274,11 +274,11 @@ int main(int argc, char *argv[])
 			//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
 
 			//to get stereo band freq
-		
+
 			conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
 			// for (int i = 0; i<stereo_BPF_coeffs.size(); i++){
 			// 	std::cerr<<"BPF within 22k and 54k: "<<stereo_BPF_coeffs[i]<<std::endl;
-	
+
 
 			// }
 			std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
@@ -295,9 +295,9 @@ int main(int argc, char *argv[])
 			// }
 			//PLL for pilot
 			//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-	
+
 			fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
-			 
+
 
 
 			//MIXER
@@ -306,11 +306,11 @@ int main(int argc, char *argv[])
 				mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
 				// if(i < 30){
 				// std::cerr<< "index: "<<i<<"\tpilot NCO output "<<pilot_NCO_outp[i]<<"\tstereo filtered"<<stereo_filtered[i]<<"\tmixer val: "<<mixer[i]<<std::endl;
-				
+
 				// }
 			}
 
-			
+
 
 			//conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
 			conv_rs(mixer_filtered, mixer, final_coeffs, audio_decim, audio_expan, state_mixer);
@@ -335,16 +335,16 @@ int main(int argc, char *argv[])
 			std::cerr<<"Mixer filtered size: "<<mixer_filtered.size()<<std::endl;
 
 
-			//figure out how to implement 'state saving' in
-			//finish implementing delay function in filter
-			stereo_data.resize(right_stereo.size()*2);
-			int i = 0;
-			for (int k = 0; k< right_stereo.size(); k++){
-				stereo_data[i] = left_stereo[k];
-				stereo_data[i+1] = right_stereo[k];
-				i += 2;
-			
-			}
+			// //figure out how to implement 'state saving' in
+			// //finish implementing delay function in filter
+			// stereo_data.resize(right_stereo.size()*2);
+			// int i = 0;
+			// for (int k = 0; k< right_stereo.size(); k++){
+			// 	stereo_data[i] = left_stereo[k];
+			// 	stereo_data[i+1] = right_stereo[k];
+			// 	i += 2;
+			//
+			// }
 			// std::cerr<<"Stereo Data size: "<<stereo_data.size()<<"Left and right: "<<left_stereo.size()<<right_stereo.size()<<std::endl;
 			// for (int i  = 0; i < 21;i++){
 			// 	std::cerr<<"Stereo data at index: "<<i<<" data: "<<stereo_data[i]<<std::endl;
@@ -364,14 +364,14 @@ int main(int argc, char *argv[])
 			final += block_time.count();
 			///------------BELOW WRITES THE MONO PATH------------
 			//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-			std::vector<short int> audio_data(processed_data.size());
-			for (unsigned int k = 0; k < processed_data.size(); k++){
-				if (std::isnan(processed_data[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-
-			}
-			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			// std::vector<short int> audio_data(processed_data.size());
+			// for (unsigned int k = 0; k < processed_data.size(); k++){
+			// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			//
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
 			// std::vector<short int> audio_data(left_stereo.size());
@@ -384,12 +384,23 @@ int main(int argc, char *argv[])
 
 			// //------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
 			// std::vector<short int> audio_data(right_stereo.size());
-			// for (unsigned int k = 0; k < right_stereo.size(); k++){
-			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+			std::vector<short int> audio_data(2*right_stereo.size());
+			int i = 0;
+			for (unsigned int k = 0; k < right_stereo.size(); k++){
+			// for (unsigned int k = 0; k < 2*right_stereo.size(); k++){
+				if (std::isnan(right_stereo[k])) {
+					audio_data[i] = 0;
+					audio_data[i+1] = 0;
+				}
+				// else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+				else {
+					audio_data[i] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+					audio_data[i+1] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+				}
+				i += 2;
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			// //---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
 			// std::vector<short int> audio_data(stereo_data.size());
