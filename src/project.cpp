@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 	// 	std::vector<float>final_output = produce_data(mode);
 	// }
 	rf_thread(mode);
+	audio_thread(mode);
 	
 	
 	// Mode values;

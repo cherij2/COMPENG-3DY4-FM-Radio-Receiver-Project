@@ -95,15 +95,19 @@ void rf_thread(int mode)  {                        // Continue producing until d
     float prev_i = 0.0;
     float prev_q = 0.0;
     gainimpulseResponseLPF(values.RF_Fs, values.RF_Fc, values.num_Taps, RF_h, values.audio_expan);
-    while (true){
+    bool exitwhile = false;
+    while (!exitwhile){
         for(unsigned int block_id = 0; ; block_id++){
             //std::cerr<<"Block id "<<block_id<<std::endl;
             std::vector<float> block_data(values.BLOCK_SIZE);
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
-            if((std::cin.rdstate()) != 0){
+            //if((std::cin.rdstate()) != 0){
+            if(block_id == 100){
                 std::cerr<<"End of input stream reached" << std::endl;
                 tsQueue.print_contents();
-                exit(1);
+                std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
+                exitwhile = true;
+                break;
             }
             std::cerr<<"Block id "<<block_id<<std::endl;
             split_audio_iq(block_data, i_data, q_data);
@@ -120,7 +124,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
 
 // // Function representing the work of the audio thread (the consumer)
 void audio_thread(int mode) {
-    Mode values
+    Mode values;
     values.configMode(mode);
     std::vector<float> state_mono(values.num_Taps-1, 0.0);
     std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
@@ -139,7 +143,7 @@ void audio_thread(int mode) {
 
 	// //for BLOCK DELAY
 	std::vector<float> mono_processed_delay;
-	std::vector<float> state_delay((num_Taps-1)/2, 0.0);
+	std::vector<float> state_delay((values.num_Taps-1)/2, 0.0);
 
 	std::vector<float> right_stereo;
 	std::vector<float> left_stereo;
@@ -159,32 +163,44 @@ void audio_thread(int mode) {
 	std::vector<float> processed_data;
 	std::vector<float> stereo_data;
 
+    std::vector<float> final_coeffs;
+    bool exitwhile = false;
 	gainimpulseResponseLPF(values.IF_Fs*values.audio_expan, values.mono_Fc, values.num_Taps*values.audio_expan, final_coeffs, values.audio_expan);//MONO PATH
 
 	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
-
-    while (!done) {                           // Continue consuming until done is true
-        if(tsQueue.empty() && !tsQueue.wait_and_pop()) { // if queue is empty and there is nothing else that is coming in, then break 
+    int i = 0;
+    while (!exitwhile) {                           // Continue consuming until done is true
+        if(tsQueue.empty()) { // if queue is empty and there is nothing else that is coming in, then break 
+            exitwhile = true;
             break;
         }
 
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+        std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
+        i++;
+        if (demod_ptr) {
+            // Dereference the pointer to obtain the vector
+            const std::vector<float>& demod_vector = *demod_ptr;
 
-        delayBlock(demod, mono_processed_delay, state_delay);
-        conv_rs(processed_data, mono_processed_delay, final_coeffs, audio_decim, values.audio_expan, state_mono);
+            // Print out the contents of the vector
+            std::cerr<<"vector size "<<demod_vector.size()<<std::endl;
+        }
+        delayBlock(*demod_ptr, mono_processed_delay, state_delay);
+        conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
 
-        fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-        conv_ds_fast(pilot_filtered, demod, pilot_BPF_coeffs, 1, state_pilot);
-        conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
+        //fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
+        conv_ds_fast(pilot_filtered, *demod_ptr, pilot_BPF_coeffs, 1, state_pilot);
+        conv_ds_fast(stereo_filtered, *demod_ptr, stereo_BPF_coeffs, 1, state_stereo);
 
+        fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
 		mixer.resize(stereo_filtered.size(), 0.0);
 		for(int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
         }
 
-        conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
-        conv_rs(mixer_filtered, mixer, final_coeffs, audio_decim, values.audio_expan, state_mixer);
+        
+        conv_rs(mixer_filtered, mixer, final_coeffs, values.audio_decim, values.audio_expan, state_mixer);
 
         right_stereo.resize(mixer_filtered.size());
         left_stereo.resize(mixer_filtered.size());
@@ -203,7 +219,7 @@ void audio_thread(int mode) {
         }
 
 
-        std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+        //std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
     }
 }
 
