@@ -195,6 +195,15 @@ void audio_thread(int mode) {
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
         //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
         conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
+
+        std::vector<short int> audio_data(processed_data.size());
+  			for (unsigned int k = 0; k < processed_data.size(); k++){
+  				if (std::isnan(processed_data[k])) audio_data[k] = 0;
+  				else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+
+  			}
+  			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+  			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
         //std::cerr<<"processed data size: "<<processed_data.size()<<std::endl;
         //-------------MONO PATH END----------------------------------
 
@@ -232,7 +241,7 @@ void audio_thread(int mode) {
             stereo_data[i+1] = right_stereo[k];
             i += 2;
         }
-        
+
         // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
         ///------------BELOW WRITES THE MONO PATH------------
 	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
@@ -264,14 +273,14 @@ void audio_thread(int mode) {
 			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
 			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
-			std::vector<short int> audio_data(stereo_data.size());
-			for (unsigned int k = 0; k < stereo_data.size(); k++){
-				if (std::isnan(stereo_data[k])) audio_data[k] = 0;
-				else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			}
-			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
+		// 	std::vector<short int> audio_data(stereo_data.size());
+		// 	for (unsigned int k = 0; k < stereo_data.size(); k++){
+		// 		if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+		// 		else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+		// 	}
+		// 	//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+		// 	fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+    //
     }
 }
 
