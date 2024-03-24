@@ -32,6 +32,7 @@ void Mode::configMode(int mode){
             audio_decim = 400;
             audio_expan = 147;
             BLOCK_SIZE = 15*audio_decim*rf_decim*2;
+            RF_Fc = 60e3;
             break;
         }
     }

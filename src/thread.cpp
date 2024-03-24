@@ -21,7 +21,7 @@ public:
         q.push(data);                         // Push the data onto the queue
         cv.notify_one();                      // Notify one waiting thread that there is new data available
     }
-
+    
     // Waits for an element to be available and pops it from the queue
     std::shared_ptr<T> wait_and_pop() {
         std::unique_lock<std::mutex> lock(m); // Unique lock allows the lock to be temporarily released
@@ -107,14 +107,17 @@ void rf_thread(int mode)  {                        // Continue producing until d
                 tsQueue.print_contents();
                 std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
                 exitwhile = true;
+                std::cerr<<"done flag "<<done<<std::endl;
+                done = true;
+                std::cerr<<"done flag "<<done<<std::endl;
                 break;
             }
-            std::cerr<<"Block id "<<block_id<<std::endl;
+            //std::cerr<<"Block id "<<block_id<<std::endl;
             split_audio_iq(block_data, i_data, q_data);
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            // std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
+            std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             tsQueue.push(demod);
         }
     }
@@ -126,6 +129,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
 void audio_thread(int mode) {
     Mode values;
     values.configMode(mode);
+    std::cerr<<"ENTERED AUDIO THREAD"<<std::endl;
     std::vector<float> state_mono(values.num_Taps-1, 0.0);
     std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
     std::vector<float> state_pilot(values.num_Taps-1, 0.0); // band pass 18.5khz-19.5khz (noise one)
@@ -171,7 +175,7 @@ void audio_thread(int mode) {
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
     int i = 0;
     while (!exitwhile) {                           // Continue consuming until done is true
-        if(tsQueue.empty()) { // if queue is empty and there is nothing else that is coming in, then break 
+        if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break 
             exitwhile = true;
             break;
         }
@@ -184,7 +188,7 @@ void audio_thread(int mode) {
             const std::vector<float>& demod_vector = *demod_ptr;
 
             // Print out the contents of the vector
-            std::cerr<<"vector size "<<demod_vector.size()<<std::endl;
+            std::cerr<<"demid vector size "<<demod_vector.size()<<std::endl;
         }
         
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
@@ -226,15 +230,43 @@ void audio_thread(int mode) {
             i += 2;
         }
         // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
+        ///------------BELOW WRITES THE MONO PATH------------
+	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
+	// 		// std::vector<short int> audio_data(processed_data.size());
+	// 		// for (unsigned int k = 0; k < processed_data.size(); k++){
+	// 		// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
+	// 		// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 
-        std::vector<short int> audio_data(processed_data.size());
-        for (unsigned int k = 0; k < processed_data.size(); k++){
-            if (std::isnan(processed_data[k])) audio_data[k] = 0;
-            else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+	// 		// }
+	// 		// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+	// 		// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
 
-        }
-        //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-        fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+	// 		//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
+			std::vector<short int> audio_data(left_stereo.size());
+			for (unsigned int k = 0; k < left_stereo.size(); k++){
+				if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+				else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
+			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
+			// std::vector<short int> audio_data(right_stereo.size());
+			// for (unsigned int k = 0; k < right_stereo.size(); k++){
+			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+
+			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
+			// std::vector<short int> audio_data(stereo_data.size());
+			// for (unsigned int k = 0; k < stereo_data.size(); k++){
+			// 	if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+			// 	else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			// }
+			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
         //std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
     }
 }

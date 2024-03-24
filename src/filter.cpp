@@ -83,7 +83,7 @@ void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::v
 			h[i] = norm_pass * ((sin(PI*(norm_pass/2)*(i-(num_taps-1)/2)))/(PI*(norm_pass/2)*(i-(num_taps-1)/2)));
 		}
 
-		h[i] = h[i]*cos(i*PI*norm_center);
+		h[i] = h[i]*cos((i-(num_taps-1)/2)*PI*norm_center);
 		h[i] = h[i]*sin(i*PI/num_taps)*sin(i*PI/num_taps);
 	}
 }
