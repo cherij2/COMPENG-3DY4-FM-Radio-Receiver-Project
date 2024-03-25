@@ -7,6 +7,9 @@
 #include <vector>
 #include <math.h>
 
+
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data);
+
 void downsample(const std::vector<int> &input_signal, std::vector<int> &output_signal, int decimation_factor);
 
 void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q);
@@ -22,5 +25,7 @@ void conv_ds_slow(std::vector<float> &y, const std::vector<float> &x, const std:
 void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state);
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state);
+
+void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state);
 
 #endif

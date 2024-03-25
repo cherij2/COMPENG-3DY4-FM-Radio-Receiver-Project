@@ -1,6 +1,14 @@
 #include "dy4.h"
 #include "RFfront.h"
 
+
+void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
+	std::vector<char> raw_data(num_samples);
+	std::cin.read(reinterpret_cast<char*>(&raw_data[0]), num_samples*sizeof(char));
+	for (int k=0; k<(int)num_samples; k++){
+		block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0);
+	}
+}
 void downsample(const std::vector<int> &input_signal, std::vector<int> &output_signal, int decimation_factor)
 {
     // Calculate the size of the downsampled vector
@@ -94,7 +102,7 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 			}
 			else
 			{
-				sum += h[k] * state[h.size() - 1 + (n - k)]; //
+				sum += h[k] * state[state.size() - 1 + (n - k)]; //
 			}
 
             if(n%ds == 0){
@@ -107,26 +115,57 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
             }
 		}
 	}
-    std::vector<float> new_state(&xb[xb.size()-h.size()+1], &xb[xb.size()]);
+    std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
     state = new_state;
+    //std::cerr<<"new_state of "<<new_state.size()<<std::endl;
 }
+void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state){				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
+	yb.clear(); // this implementation copies the python code
+	yb.resize(xb.size()/ds, 0.0);
+
+	for (int n = 0; n < (int)yb.size(); n++)
+	{
+		for (int k = 0; k < (int)h.size(); k++)
+		{
+			if (ds*n - k >= 0)
+			{
+				yb[n] += h[k] * xb[ds*n - k];
+			}
+			else
+			{
+				yb[n] += h[k] * state[state.size() - 1 + (ds*n - k)]; //
+			}
+
+		}
+	}
+    std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
+    state = new_state;
+    //std::cerr<<"new_state: "<<new_state.size()<<std::endl;
+}
+
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
     //fast implementation from lecture notes
-    int phase = 0;
+    //std::cerr<< "yb: "<<yb.size()<<" xb size: "<<xb.size()<<" h size: "<<h.size()<<std::endl;
+    
     for(int n = 0; n < (int)yb.size(); n++){
-        phase = (n*ds)%us;
+        int phase = (n*ds)%us; // phase changes when n is incremented in our case
         for (int k = phase; k < (int)h.size(); k+= us){
-            int dx = (ds*n-k)/us;
+            int dx = (ds*n-k)/us; //when n = 1, dx starts at 2, 1,  
+            
             if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
+                
             }else{
-                yb[n] += h[k]*state[state.size()-1+dx];
+                 yb[n] += h[k]*state[state.size() - 1 +dx];
+                 
             }
         }
     }
-    std::vector<float> new_state(&xb[xb.size()-state.size()+1], &xb[xb.size()]);
+    //std::cerr<< "resampling state size = "<<state.size()<<std::endl;
+    std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
+    //std::cerr<<"new_state size: "<<new_state.size()<<std::endl;
     state = new_state;
 }
 
@@ -152,13 +191,15 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
         float denominator = (std::pow(I[i], 2) + std::pow(Q[i], 2));
         float deriv_I = I[i] - I_prev;
         float deriv_Q = Q[i] - Q_prev;
-        if (I[i] == 0 || Q[i] == 0 || denominator == 0){
-            current_phase[i] = 0;
-        }
-        else {
-            current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0)? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+        // if (I[i] == 0 || Q[i] == 0 || denominator == 0){
+        //     current_phase[i] = 0;
+        // }
+        // else {
+        current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0) ? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+        //above just implements an if else statement and assigns the value of demod at index i 0 if 
 
-        } 
+        // } 
+        //std::cerr<<" FM demod at index: "<<i<<" FM demod value: "<<current_phase[i]<<std::endl;
         I_prev = I[i];
         Q_prev = Q[i];   
     }//if I or Q at that index = 0 make that demod element at that index  = 0
