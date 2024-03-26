@@ -183,12 +183,13 @@ void audio_thread(int mode, std::string channel) {
 
 	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
-    //int i = 0;
+
     while (!exitwhile) {                           // Continue consuming until done is true
         if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break
             exitwhile = true;
             break;
         }
+        //int i  = 0;
         //std::cerr<<"test"<<std::endl;
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
         // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
@@ -243,37 +244,7 @@ void audio_thread(int mode, std::string channel) {
             i += 2;
         }
 
-        // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
-        ///------------BELOW WRITES THE MONO PATH------------
-	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-			// std::vector<short int> audio_data(processed_data.size());
-			// for (unsigned int k = 0; k < processed_data.size(); k++){
-			// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-	// 		//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
-			// std::vector<short int> audio_data(left_stereo.size());
-			// for (unsigned int k = 0; k < left_stereo.size(); k++){
-			// 	if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
-			// std::vector<short int> audio_data(right_stereo.size());
-			// for (unsigned int k = 0; k < right_stereo.size(); k++){
-			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
+        
             if (channel == "m"){
             std::vector<short int> audio_data(processed_data.size());
                 for (unsigned int k = 0; k < processed_data.size(); k++){
@@ -291,6 +262,22 @@ void audio_thread(int mode, std::string channel) {
                 }
                 //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
                 fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+            } else if (channel == "r"){
+                std::vector<short int> audio_data(right_stereo.size());
+			    for (unsigned int k = 0; k < right_stereo.size(); k++){
+				    if (std::isnan(right_stereo[k])) audio_data[k] = 0;
+				    else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+            } else if (channel == "l"){
+                std::vector<short int> audio_data(left_stereo.size());
+			    for (unsigned int k = 0; k < left_stereo.size(); k++){
+				    if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+				    else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
             }
     //
     }
