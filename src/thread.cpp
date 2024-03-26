@@ -9,17 +9,23 @@ std::atomic<bool> done{false};
 template <typename T>
 class ThreadSafeQueue {
 private:
-    mutable std::mutex m;                   // Mutex to protect access to the queue
-    std::queue<std::shared_ptr<T>> q;       // Standard queue wrapped inside the thread-safe queue
-    std::condition_variable cv;             // Condition variable for notifying waiting threads
+    mutable std::mutex m;                    // Mutex to protect access to the queue
+    std::queue<std::shared_ptr<T>> q;        // Standard queue wrapped inside the thread-safe queue
+    std::condition_variable cv;              // Condition variable for notifying waiting threads
+    std::condition_variable cv_producer;     // Condition variable for notifying when space is available
+    const size_t max_size = 3;               // Maximum size of the queue
 
 public:
     // Enqueues an element by copying it into a shared_ptr and adding it to the queue
     void push(T value) {
-        std::shared_ptr<T> data(std::make_shared<T>(std::move(value))); // Create a shared_ptr to the new data
-        std::lock_guard<std::mutex> lock(m);  // Lock the mutex during the queue operation
-        q.push(data);                         // Push the data onto the queue
-        cv.notify_one();                      // Notify one waiting thread that there is new data available
+        std::shared_ptr<T> data(std::make_shared<T>(std::move(value)));
+        std::unique_lock<std::mutex> lock(m); // Use unique_lock to be able to wait
+
+        // Wait until there is space in the queue
+        cv_producer.wait(lock, [this]{ return q.size() < max_size; });
+
+        q.push(data);                        // Push the data onto the queue
+        cv.notify_one();                     // Notify one waiting thread that there is new data available
     }
 
     // Waits for an element to be available and pops it from the queue
@@ -28,8 +34,9 @@ public:
         cv.wait(lock, [this]{ return !q.empty(); }); // Wait until the queue is not empty
         std::shared_ptr<T> result = q.front(); // Get the front element
         q.pop();                              // Remove the element from the queue
-        return result;                         // Return the data to the caller
-    }
+        cv_producer.notify_one();             // Notify one waiting producer that space is available
+        return result;                        // Return the data to the caller
+    }    
 
     // Tries to pop an element from the queue without waiting
     bool try_pop(T& value) {
@@ -105,7 +112,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
             //if(block_id == 100){
                 std::cerr<<"End of input stream reached" << std::endl;
                 //tsQueue.print_contents();
-                //std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
+                std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
                 exitwhile = true;
                 std::cerr<<"done flag "<<done<<std::endl;
                 done = true;
@@ -117,8 +124,9 @@ void rf_thread(int mode)  {                        // Continue producing until d
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
+            std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             tsQueue.push(demod);
+            std::cerr<<"size after pushing: "<<tsQueue.size()<<std::endl;
         }
     }
         // Push the produced data onto the queue
