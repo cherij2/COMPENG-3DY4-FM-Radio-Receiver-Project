@@ -129,29 +129,34 @@ void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const st
     state = new_state;
     //std::cerr<<"new_state: "<<new_state.size()<<std::endl;
 }
+void conv_iq(std::vector<float>& yi, const std::vector<float>& xi, const std::vector<float>& hi, std::vector<float>& yq, const std::vector<float>& xq, const std::vector<float>& hq, int ds, std::vector<float>& state_i, std::vector<float>& state_q) { 
+    const size_t filterLength = hi.size(); 
+    const size_t stateLength = state_i.size(); 
+    yi.clear(); 
+    yq.clear(); 
 
-void conv_iq(std::vector<float> &yi, const std::vector<float> &xi, const std::vector<float> &hi,std::vector<float> &yq, 
-            const std::vector<float> &xq, const std::vector<float> &hq, int ds, std::vector<float> &state_i, std::vector<float> &state_q){
-    yi.clear();yq.clear(); // this implementation copies the python code
-	yi.resize(xi.size()/ds, 0.0);yq.resize(xq.size()/ds, 0.0);
+    for (size_t n = 0; n < xi.size(); n += ds) { 
+        float yi_sum = 0.0f; 
+        float yq_sum = 0.0f; 
+        for (size_t k = 0; k < filterLength; ++k) { 
+            if (n >= k) { 
+                yi_sum += hi[k] * xi[n - k]; 
+                yq_sum += hq[k] * xq[n - k]; 
+            } else { 
+                yi_sum += hi[k] * state_i[stateLength - k + n]; 
+                yq_sum += hq[k] * state_q[stateLength - k + n]; 
+            }
+        } 
+        yi.push_back(yi_sum); 
+        yq.push_back(yq_sum); 
+    } 
 
-	for (int n = 0; n < (int)yi.size(); n++) {
-        //float sum = 0.0;
-		for (int k = 0; k < (int)hi.size(); k++) {
-			if (ds*n - k >= 0) {
-				yi[n] += hi[k] * xi[ds*n - k];
-                yq[n] += hq[k] * xq[ds*n - k];
-			} else {
-				yi[n] += hi[k] * state_i[state_i.size() + (ds*n - k)];
-                yq[n] += hq[k] * state_q[state_q.size() + (ds*n - k)];
-			}
-		}
-	}
-    std::vector<float> new_statei(&xi[xi.size()-state_i.size()], &xi[xi.size()]);
-    std::vector<float> new_stateq(&xq[xq.size()-state_q.size()], &xq[xq.size()]);
-    state_i = new_statei;
-    state_q = new_stateq;
-}
+    // Update the states 
+    std::copy(xi.end() - filterLength, xi.end(), state_i.begin());
+    std::copy(xq.end() - filterLength, xq.end(), state_q.begin()); 
+} 
+
+ 
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
@@ -177,26 +182,30 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
     state = new_state;
 }
 
-void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
-    I.clear(); //I.resize(audio_data.size()/2);
-    Q.clear(); //Q.resize(audio_data.size(/2);
-    for (int i = 0; i < (int)audio_data.size(); i++)
-    {
-        if (i % 2 == 0)
-            I.push_back(audio_data[i]);
-        else
-            Q.push_back(audio_data[i]);
-    }
-}
-
 // void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
 //     I.clear(); //I.resize(audio_data.size()/2);
 //     Q.clear(); //Q.resize(audio_data.size(/2);
-//     for (int i = 0; i < (int)audio_data.size(); i+=2) {
-//         I.push_back(audio_data[i]);
-//         Q.push_back(audio_data[i+1]);
+//     for (int i = 0; i < (int)audio_data.size(); i++)
+//     {
+//         if (i % 2 == 0)
+//             I.push_back(audio_data[i]);
+//         else
+//             Q.push_back(audio_data[i]);
 //     }
 // }
+
+void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
+    size_t count = audio_data.size() >> 1;
+    I.resize(count);
+    Q.resize(count);
+
+    const float* input = audio_data.data();
+
+    for(size_t i = 0, j = 0; i < count; ++i, j+=2) {
+        I[i] = input[j];
+        Q[i] = input[j+1];
+    }
+}
 
 void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I_prev, float &Q_prev, std::vector<float> &current_phase)
 {
