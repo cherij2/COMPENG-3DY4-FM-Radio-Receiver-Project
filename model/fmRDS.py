@@ -17,6 +17,7 @@ import math
 from fmSupportLib import fmDemodArctan, fmPlotPSD, derivativeDemod
 from fmMonoBasic import LPF, BPF
 from fmPll import fmPll
+from fmRRC import impulseResponseRootRaisedCosine
 # for take-home add your functions
 
 rf_Fc = 100e3
@@ -30,8 +31,7 @@ audio_taps = 101
 # add other settings for audio, like filter taps, ...
 
 # flag that keeps track if your code is running for
-# in-lab (il_vs_th = 0) vs takehome (il_vs_th = 1)
-state_RDS 
+# in-lab (il_vs_th = 0) vs takehome (il_vs_th = 1) 
 
 mode = 0
 if (mode == 0):
@@ -131,19 +131,19 @@ if __name__ == "__main__":
 
 	rds_CR_coeffs = BPF(113500, 114500, if_Fs, if_taps)
     
-    rds_DEM_LPF_coeffs = LPF(if_Fs, 3000, if_taps)
+	rds_DEM_LPF_coeffs = LPF(if_Fs, 3000, if_taps)
     
-    rr_fs_out = 2375 * 30
-    rr_fs_in = 240000
-    rr_gcd = math.gcd(rr_fs_out, rr_fs_in)
-    rr_us = rr_fs_out / rr_gcd
-    rr_ds = rr_fs_in / rr_gcd
-    rr_filter size = if_taps * rr_us
-    rr_fs = rr_us*if_Fs
-    rr_fc = min((rr_us / rr_ds)*(rr_fs/2), rr_fs/2)
-    rds_DEM_RR_coeffs = LPF(if_Fs, 3000, if_taps)
+	rr_fs_out = 2375 * 30
+	rr_fs_in = 240000
+	rr_gcd = math.gcd(rr_fs_out, rr_fs_in)
+	rr_us = rr_fs_out / rr_gcd
+	rr_ds = rr_fs_in / rr_gcd
+	rr_outp = [if_taps * rr_us]
+	rr_fs = rr_us*if_Fs
+	rr_fc = min((rr_us / rr_ds)*(rr_fs/2), rr_fs/2)
+	rds_DEM_RR_coeffs = LPF(if_Fs, 3000, if_taps)
 
-
+	crr_fs = (rr_us / rr_ds) * if_Fs
 
 	# set up the subfigures for plotting
 	subfig_height = np.array([0.8, 2, 1.6]) # relative heights of the subfigures
@@ -178,6 +178,7 @@ if __name__ == "__main__":
     CR_state_rds = np.zeros(audio_taps-1)
     CR_state_rds_pll = np.zeros(audio_taps-1)
     rds_DEM_LPF_state = np.zeros(audio_taps-1)
+	rds_DEM_rr_state = np.zeros(audio_taps-1)
 
 	#mixer state
 	state_mixer = np.zeros(audio_taps-1)
@@ -258,17 +259,29 @@ if __name__ == "__main__":
 
 		delayed_rds, rds_state_delay = delayBlock(bb_rds_filt, rds_state_delay) #ALL PASS FILTER
 
-        nonLin_rds = bb_rds_filt[:-1]*bb_rds_filt # SQAURING NONLIN
+        nonLin_rds = bb_rds_filt * bb_rds_filt # SQAURING NONLIN
 
 		CR_rds_filt, CR_state_rds = signal.lfilter(rds_CR_coeffs, 1.0, nonLin_rds, zi = CR_state_rds) # BPF CARRIER RECOVERY
 
 		rds_ncoOut, CR_state_rds_pll = fmPll(CR_rds_filt, 114000, if_Fs, ncoScale = 0.5 , normBandwidth=0.003, state = CR_state_rds_pll) # PLL
 
-		mixer_rds = rds_ncoOut[:-1]*bb_rds_filt # MIX3R
+		#GRAPHING CARRIER RECVOERY 
+		t = np.arange(0, 1, 1/if_Fs)
 
-        rds_DEM_LPF_filt, rds_DEM_LPF_state = signal.lfilter(rds_DEM_LPF_coeffs, 1.0, mixer_rds, zi = rds_DEM_LPF_state) #LPF
+		plt.figure()
+		plt.plot(t, rds_ncoOut, label='PLL Output')
+		plt.xlabel('Time (s)')
+		plt.ylabel('Amplitude')
+		plt.grid(True)
+		plt.show()
+
+		# mixer_rds = rds_ncoOut[:-1]*bb_rds_filt # MIX3R
+
+    	# rds_DEM_LPF_filt, rds_DEM_LPF_state = signal.lfilter(rds_DEM_LPF_coeffs, 1.0, mixer_rds, zi = rds_DEM_LPF_state) #LPF
         
-        convolution_rs(rr_outp, rds_DEM_LPF_filt, )
+        # convolution_rs(rr_outp, rds_DEM_LPF_filt, rds_DEM_RR_coeffs, rr_ds, rr_us, rds_DEM_rr_state) #RATIONAL RESAMPLER
+
+		# impulseResponseRootRaisedCosine(if_Fs, N_taps) # ROOT RAISED COSINE
 
 
 
