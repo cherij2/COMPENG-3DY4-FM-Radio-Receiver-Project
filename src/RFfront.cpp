@@ -109,38 +109,54 @@ void conv_ds(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 	}
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
     state = new_state;
-    std::cerr<<"new_state of "<<new_state.size()<<std::endl;
+    //std::cerr<<"new_state of "<<new_state.size()<<std::endl;
 }
 void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state){				// parameters include yb which is output block, xb input signal, h is the impulse response of the filter, state is state that will be used and updated to be used for the next block
 	yb.clear(); // this implementation copies the python code
 	yb.resize(xb.size()/ds, 0.0);
 
-	for (int n = 0; n < (int)yb.size(); n++)
-	{
+	for (int n = 0; n < (int)yb.size(); n++) {
         float sum = 0.0;
-		for (int k = 0; k < (int)h.size(); k++)
-		{
-			if (ds*n - k >= 0)
-			{
+		for (int k = 0; k < (int)h.size(); k++) {
+			if (ds*n - k >= 0) {
 				yb[n] += h[k] * xb[ds*n - k];
+			} else {
+				yb[n] += h[k] * state[state.size() + (ds*n - k)]; //
 			}
-			else
-			{
-				yb[n] += h[k] * state[state.size() - 1 + (ds*n - k)]; //
-			}
-
 		}
 	}
     std::vector<float> new_state(&xb[xb.size()-state.size()], &xb[xb.size()]);
     state = new_state;
-    std::cerr<<"new_state: "<<new_state.size()<<std::endl;
+    //std::cerr<<"new_state: "<<new_state.size()<<std::endl;
 }
 
+void conv_iq(std::vector<float> &yi, const std::vector<float> &xi, const std::vector<float> &hi,std::vector<float> &yq, 
+            const std::vector<float> &xq, const std::vector<float> &hq, int ds, std::vector<float> &state_i, std::vector<float> &state_q){
+    yi.clear();yq.clear(); // this implementation copies the python code
+	yi.resize(xi.size()/ds, 0.0);yq.resize(xq.size()/ds, 0.0);
+
+	for (int n = 0; n < (int)yi.size(); n++) {
+        //float sum = 0.0;
+		for (int k = 0; k < (int)hi.size(); k++) {
+			if (ds*n - k >= 0) {
+				yi[n] += hi[k] * xi[ds*n - k];
+                yq[n] += hq[k] * xq[ds*n - k];
+			} else {
+				yi[n] += hi[k] * state_i[state_i.size() + (ds*n - k)];
+                yq[n] += hq[k] * state_q[state_q.size() + (ds*n - k)];
+			}
+		}
+	}
+    std::vector<float> new_statei(&xi[xi.size()-state_i.size()], &xi[xi.size()]);
+    std::vector<float> new_stateq(&xq[xq.size()-state_q.size()], &xq[xq.size()]);
+    state_i = new_statei;
+    state_q = new_stateq;
+}
 
 void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state){
     yb.clear(); yb.resize((xb.size()*us)/ds, 0.0);
     //fast implementation from lecture notes
-    std::cerr<< "yb: "<<yb.size()<<" xb size: "<<xb.size()<<" h size: "<<h.size()<<std::endl;
+    //std::cerr<< "yb: "<<yb.size()<<" xb size: "<<xb.size()<<" h size: "<<h.size()<<std::endl;
     
     for(int n = 0; n < (int)yb.size(); n++){
         int phase = (n*ds)%us; // phase changes when n is incremented in our case
@@ -149,8 +165,7 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
             
             if(dx >= 0){
                 yb[n] += h[k]*xb[dx];
-                
-            }else{
+            } else{
                  yb[n] += h[k]*state[state.size() - 1 +dx];
                  
             }
@@ -162,8 +177,7 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
     state = new_state;
 }
 
-void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
-{
+void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
     I.clear(); //I.resize(audio_data.size()/2);
     Q.clear(); //Q.resize(audio_data.size(/2);
     for (int i = 0; i < (int)audio_data.size(); i++)
@@ -175,6 +189,15 @@ void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I,
     }
 }
 
+// void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
+//     I.clear(); //I.resize(audio_data.size()/2);
+//     Q.clear(); //Q.resize(audio_data.size(/2);
+//     for (int i = 0; i < (int)audio_data.size(); i+=2) {
+//         I.push_back(audio_data[i]);
+//         Q.push_back(audio_data[i+1]);
+//     }
+// }
+
 void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I_prev, float &Q_prev, std::vector<float> &current_phase)
 {
 
@@ -184,14 +207,15 @@ void FM_demod(const std::vector<float> &I, const std::vector<float> &Q, float &I
         float denominator = (std::pow(I[i], 2) + std::pow(Q[i], 2));
         float deriv_I = I[i] - I_prev;
         float deriv_Q = Q[i] - Q_prev;
-        // if (I[i] == 0 || Q[i] == 0 || denominator == 0){
-        //     current_phase[i] = 0;
-        // }
-        // else {
-        current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0) ? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+        if (I[i] == 0 || Q[i] == 0 || denominator == 0){
+            current_phase[i] = 0;
+        }
+         else {
+        //current_phase[i] = (I[i] == 0.0 || Q[i] == 0.0) ? 0.0:(I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
+        current_phase[i] = (I[i] * deriv_Q - Q[i] * deriv_I) / denominator;
         //above just implements an if else statement and assigns the value of demod at index i 0 if 
 
-        // } 
+         } 
         //std::cerr<<" FM demod at index: "<<i<<" FM demod value: "<<current_phase[i]<<std::endl;
         I_prev = I[i];
         Q_prev = Q[i];   

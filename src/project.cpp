@@ -133,9 +133,9 @@ int main(int argc, char *argv[])
 	std::vector<float> i_data, q_data;
 	std::vector<float> filt_i, filt_q;
 	std::vector<float> demod;
-	std::vector<float> state_i(num_Taps, 0.0);
-	std::vector<float> state_q(num_Taps, 0.0);
-	std::vector<float> state_mono(num_Taps, 0.0);
+	std::vector<float> state_i(num_Taps-1, 0.0);
+	std::vector<float> state_q(num_Taps-1, 0.0);
+	std::vector<float> state_mono(num_Taps-1, 0.0);
 
 	float prev_i = 0.0; 
 	float prev_q =0.0;
@@ -163,16 +163,25 @@ int main(int argc, char *argv[])
 			//std::cerr << "Read block " << block_id << std::endl;
 			auto block_start = std::chrono::high_resolution_clock::now();
 			// std::cerr<<"Mono Cutoff: "<<mono_Fc<<std::endl;
-
+			auto split_start = std::chrono::high_resolution_clock::now();
 			split_audio_iq(block_data, i_data, q_data);
-
+			auto split_end = std::chrono::high_resolution_clock::now();
 			// std::cerr << "\nBlock data size: "<<block_data.size()<<std::endl;
 			//std::cerr << "RF Fs = "<<RF_Fs << " RF Fc = "<<RF_Fc<<std::endl;
 			//COULD IMPLEMENT A FUNCTION THAT DOES CONVOLUTION FOR I AND Q IN ONE RUN
 
-			conv_ds_fast(filt_i, i_data, RF_h, rf_decim, state_i);
-			conv_ds_fast(filt_q, q_data, RF_h, rf_decim, state_q);
+			// conv_ds(filt_i, i_data, RF_h, rf_decim, state_i);
+			// conv_ds(filt_q, q_data, RF_h, rf_decim, state_q);
+			auto conviq_start = std::chrono::high_resolution_clock::now();
+			conv_iq(filt_i, i_data, RF_h, filt_q, q_data, RF_h, rf_decim, state_i, state_q);
+			auto conviq_end = std::chrono::high_resolution_clock::now();
+			auto demod_start = std::chrono::high_resolution_clock::now();
 			FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+			auto demod_end = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double, std::milli> split_time = split_end - split_start;
+			std::chrono::duration<double, std::milli> conviq = conviq_end - conviq_start;
+			std::chrono::duration<double, std::milli> demod_time = demod_end - demod_start;
+
 
 			//--------------------END OF RF-FRONT END-------------------
 
@@ -186,8 +195,12 @@ int main(int argc, char *argv[])
 
 			// std::cerr << "IF_h size: "<< IF_h.size() << std::endl;
 			// std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
-			
-			conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
+			auto convds_start = std::chrono::high_resolution_clock::now();
+			conv_ds_fast(processed_data, demod, IF_h, audio_decim, state_mono);
+			auto convds_end = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double, std::milli> convds_time = convds_end - convds_start;
+
+			//conv_rs(processed_data, demod, IF_h, audio_decim, audio_expan, state_mono);
 			
 			//-------------------MONO PATH END--------------------------
 
@@ -196,7 +209,7 @@ int main(int argc, char *argv[])
 			//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
 			auto block_end = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double, std::milli> block_time = block_end - block_start;
-			std::cerr << "Block: "<< block_id<< " has runtime: "<<block_time.count()<<std::endl;
+			std::cerr << "Block: "<< block_id<< "has runtime: "<<block_time.count()<<"\tsplit "<<split_time.count()<<"\tconv iq "<<conviq.count()<<"\tdemod time "<<demod_time.count()<<"\tconvds "<<convds_time.count()<<std::endl;
 			final += block_time.count();
 
 			//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
@@ -204,7 +217,6 @@ int main(int argc, char *argv[])
 			for (unsigned int k = 0; k < processed_data.size(); k++){
 				if (std::isnan(processed_data[k])) audio_data[k] = 0;
 				else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-
 			}
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit 
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);

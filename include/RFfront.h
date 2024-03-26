@@ -25,4 +25,7 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
 
 void conv_ds_fast(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, std::vector<float> &state);
 
+void conv_iq(std::vector<float> &yi, const std::vector<float> &xi, const std::vector<float> &hi,std::vector<float> &yq, 
+            const std::vector<float> &xq, const std::vector<float> &hq, int ds, std::vector<float> &state_i, std::vector<float> &state_q);
+
 #endif
