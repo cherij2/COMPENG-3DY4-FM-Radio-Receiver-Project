@@ -169,16 +169,29 @@ void conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::ve
     state = new_state;
 }
 
-void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q)
-{
+// void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
+//     I.clear(); //I.resize(audio_data.size()/2);
+//     Q.clear(); //Q.resize(audio_data.size(/2);
+//     for (int i = 0; i < (int)audio_data.size(); i++)
+//     {
+//         if (i % 2 == 0)
+//             I.push_back(audio_data[i]);
+//         else
+//             Q.push_back(audio_data[i]);
+//     }
+// }
+
+void split_audio_iq(const std::vector<float> &audio_data, std::vector<float> &I, std::vector<float> &Q) {
     I.clear(); //I.resize(audio_data.size()/2);
     Q.clear(); //Q.resize(audio_data.size(/2);
-    for (int i = 0; i < (int)audio_data.size(); i++)
-    {
-        if (i % 2 == 0)
-            I.push_back(audio_data[i]);
-        else
-            Q.push_back(audio_data[i]);
+
+    size_t half_size = audio_data.size() / 2;
+    I.reserve(half_size);
+    Q.reserve(half_size);
+
+    for (size_t i = 0; i < audio_data.size(); i+=2) {
+        I.push_back(audio_data[i]);
+        Q.push_back(audio_data[i+1]);
     }
 }
 

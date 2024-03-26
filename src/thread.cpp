@@ -13,7 +13,7 @@ private:
     std::queue<std::shared_ptr<T>> q;        // Standard queue wrapped inside the thread-safe queue
     std::condition_variable cv;              // Condition variable for notifying waiting threads
     std::condition_variable cv_producer;     // Condition variable for notifying when space is available
-    const size_t max_size = 1;               // Maximum size of the queue
+    const size_t max_size = 10;               // Maximum size of the queue
 
 public:
     // Enqueues an element by copying it into a shared_ptr and adding it to the queue
@@ -105,7 +105,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
     bool exitwhile = false;
     while (!exitwhile){
         for(unsigned int block_id = 0; ; block_id++){
-            //std::cerr<<"Block id "<<block_id<<std::endl;
+            std::cerr<<"Reading block id "<<block_id<<std::endl;
             std::vector<float> block_data(values.BLOCK_SIZE);
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
             if((std::cin.rdstate()) != 0){
@@ -119,14 +119,14 @@ void rf_thread(int mode)  {                        // Continue producing until d
                 std::cerr<<"done flag "<<done<<std::endl;
                 break;
             }
-            //std::cerr<<"Block id "<<block_id<<std::endl;
+            // std::cerr<<"Block id "<<block_id<<std::endl;
             split_audio_iq(block_data, i_data, q_data);
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
+            //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             tsQueue.push(demod);
-            std::cerr<<"size after pushing: "<<tsQueue.size()<<std::endl;
+            //std::cerr<<"size after pushing: "<<tsQueue.size()<<std::endl;
             std::cerr<<"\n";
         }
     }
@@ -138,6 +138,7 @@ void rf_thread(int mode)  {                        // Continue producing until d
 void audio_thread(int mode, std::string channel) {
     Mode values;
     values.configMode(mode);
+    int block_count = 0;
     //std::cerr<<"ENTERED AUDIO THREAD"<<std::endl;
     std::vector<float> state_mono(values.num_Taps-1, 0.0);
     std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
@@ -192,6 +193,7 @@ void audio_thread(int mode, std::string channel) {
         //int i  = 0;
         //std::cerr<<"test"<<std::endl;
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+        std::cerr << "Processing block " << block_count << std::endl;
         // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
         // i++;
         // if (demod_ptr) {
@@ -280,6 +282,7 @@ void audio_thread(int mode, std::string channel) {
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
             }
     //
+        block_count++;
     }
 }
 
