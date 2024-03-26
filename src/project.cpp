@@ -72,6 +72,7 @@ int main(int argc, char *argv[])
 
 	// Default mode 0
 	int mode = 0;
+	std::string channel = "m";
 
 	// Mode Selection
 	if (argc<2){
@@ -82,7 +83,16 @@ int main(int argc, char *argv[])
 			std::cerr << "Wrong mode " << mode << std::endl;
 			exit(1);
 		}
-	} else {
+	} else if(argc == 3){
+		mode = atoi(argv[1]);
+		channel = argv[2];
+		if (mode > 3){
+			std::cerr << "Wrong mode "<< mode << std::endl;
+		} else if (channel != "m" || channel != "s" || channel != "r"){
+			std::cerr << "wrong channel "<<channel << std::endl;
+		}
+	} 
+	else {
 		std::cerr << "Usage: " << argv[0] << std::endl;
 		std::cerr << "or " << std::endl;
 		std::cerr << "Usage: " << argv[0] << " <mode>" << std::endl;
@@ -90,6 +100,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	std::cerr << "Operating in mode " << mode << std::endl;
+	std::cerr << channel << std::endl;
 
 	// for (int i = 0; i < 233; i++ ){
 	// 	std::cerr<<"index i: "<<i<<std::endl;
@@ -98,7 +109,7 @@ int main(int argc, char *argv[])
 	// rf_thread(mode);
 	// audio_thread(mode);
 	std::thread rf_producer(rf_thread, mode);  // Create the RF producer thread
-    std::thread audio_consumer(audio_thread, mode);  // Create the audio consumer thread
+    std::thread audio_consumer(audio_thread, mode, channel);  // Create the audio consumer thread
 
     // Wait for both threads to finish
     //audio_consumer.join();
