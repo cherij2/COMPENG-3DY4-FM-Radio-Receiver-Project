@@ -43,6 +43,7 @@ void preDataProcessing(int mode) {
     std::vector<float> dem_rds_LPF_filtered;
     std::vector<float> dem_state_rds_LPF(values.num_Taps-1, 0.0);
 
+
     float dem_resamplerFs = 2375 * values.SPS;
     float dem_resamplerFc = min((values.audio_expan / values.audio_decim) *(2375/2), (2375/2));
 	std::vector<float> dem_rds_resamp_coeffs(values.num_Taps * values.audio_expan, 0.0);
@@ -99,11 +100,14 @@ void preDataProcessing(int mode) {
     impulseResponseLPF(values.IF_Fs, 3000, values.num_Taps, dem_rds_LPF_coeffs);
     conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
 
+    //CHECK IF CORRECT W/ TA, conceptually dont really get
     //Rational Resampler
     impulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs);
     //conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state)
     conv_rs(dem_rds_resamp_filtered, dem_rds_LPF_filtered, dem_rds_resamp_coeffs, values.audio_decim, values.audio_expan, dem_state_rds_LPF);
     
+
+
 
 }
 

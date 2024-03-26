@@ -161,7 +161,7 @@ void delayBlock(const std::vector<float> &input_block, std::vector<float> &outpu
 // 			}
 // 			else
 // 			{
-// 				yb[n] += h[k] * state[h.size() - 1 + (n - k)]; //
+// 			pilot_filtered	yb[n] += h[k] * state[h.size() - 1 + (n - k)]; //
 // 			}
 // 		}
 // 	}
