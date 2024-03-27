@@ -262,22 +262,70 @@ if __name__ == "__main__":
 		nonLin_rds = bb_rds_filt * bb_rds_filt # SQAURING NONLIN
 
 		CR_rds_filt, CR_state_rds = signal.lfilter(rds_CR_coeffs, 1.0, nonLin_rds, zi = CR_state_rds) # BPF CARRIER RECOVERY
+		
+		# if (block_count == 20):
+		# 	#print(len(rds_ncoOut))
+		# 	plt.figure()
+		# 	#plt.plot(rds_ncoOut[:], label='PLL Output')
+		# 	plt.plot(CR_rds_filt[:],label='PLL Input' )
+		# 	plt.xlabel('Time (s)')
+		# 	plt.ylabel('Amplitude')
+		# 	plt.legend(loc = 'upper left')
+		# 	plt.grid(True)
+		# 	plt.savefig("../data/fmPLLinput" + str(block_count) + ".png")
+		# 	plt.show()
 
-		rds_ncoOut, CR_state_rds_pll = fmPll(CR_rds_filt, 114000, if_Fs, ncoScale = 0.5, state = CR_state_rds_pll) # PLL
+		rds_ncoOut, CR_state_rds_pll = fmPll(CR_rds_filt, 114000, if_Fs, ncoScale = 0.5, normBandwidth=0.003, state = CR_state_rds_pll) # PLL
 
 		#GRAPHING CARRIER RECVOERY 
 		#t = np.arange(0, 1, 1/if_Fs)
 		#t = np.arange(0, len(rds_ncoOut)/if_Fs, 1/if_Fs)
-		if (block_count == 20):
+		# if (block_count == 20):
+		# 	print(len(rds_ncoOut))
+		# 	plt.figure()
+		# 	plt.plot(rds_ncoOut[:], label='PLL Output')
+		# 	plt.plot(CR_rds_filt[:],label='PLL Input' )
+		# 	plt.xlabel('Time (s)')
+		# 	plt.xlim(1000, 1100)
+		# 	plt.ylabel('Amplitude')
+		# 	plt.legend(loc = 'upper left')
+		# 	plt.grid(True)
+		# 	plt.savefig("../data/fmPLLinput" + str(block_count) + ".png")
+		# 	plt.show()
+		if block_count == 20:
 			print(len(rds_ncoOut))
-			plt.figure()
-			plt.plot(rds_ncoOut[1850:2050], label='PLL Output')
-			plt.plot(CR_rds_filt[1850:2050],label='PLL Input' )
-			plt.xlabel('Time (s)')
-			plt.ylabel('Amplitude')
-			plt.legend(loc = 'upper left')
-			plt.grid(True)
+			fig, ax1 = plt.subplots()
+
+			# Plot PLL Output (Left y-axis)
+			ax1.plot(rds_ncoOut[:], color='blue', label='PLL Output')
+			ax1.set_xlabel('Time (s)')
+			ax1.set_ylabel('PLL Output', color='blue')
+			ax1.tick_params(axis='y', labelcolor='blue')
+			ax1.set_ylim(min(rds_ncoOut), max(rds_ncoOut))
+
+			# Create a secondary y-axis for PLL Input
+			ax2 = ax1.twinx()  
+
+			# Plot PLL Input (Right y-axis)
+			ax2.plot(CR_rds_filt[:], color='red', label='PLL Input')
+			ax2.set_ylabel('PLL Input', color='red')
+			ax2.tick_params(axis='y', labelcolor='red')
+			ax2.set_ylim(min(CR_rds_filt), max(CR_rds_filt))
+
+			# Set limits for x-axis
+			plt.xlim(1000, 1020)
+
+			# Add legend
+			ax1.legend(loc='upper left')
+			ax2.legend(loc='upper right')
+
+			# Add grid
+			ax1.grid(True)
+
+			# Save the plot
 			plt.savefig("../data/fmPLLinput" + str(block_count) + ".png")
+
+			# Show the plot
 			plt.show()
 			
 		# mixer_rds = rds_ncoOut[:-1]*bb_rds_filt # MIX3R
