@@ -179,6 +179,7 @@ if __name__ == "__main__":
 	CR_state_rds_pll = initial_state_rds
 	rds_DEM_LPF_state = np.zeros(audio_taps-1)
 	rds_DEM_rr_state = np.zeros(audio_taps-1)
+	rds_DEM_RRC_state = np.zeros(audio_taps-1)
 
 	#mixer state
 	state_mixer = np.zeros(audio_taps-1)
@@ -276,41 +277,77 @@ if __name__ == "__main__":
 		# 	plt.show()
 
 		rds_ncoOut, CR_state_rds_pll = fmPll(CR_rds_filt, 114000, if_Fs, ncoScale = 0.5, normBandwidth=0.003, state = CR_state_rds_pll) # PLL
+		
+		
+		#DEMODULATION 
 
-		#GRAPHING CARRIER RECVOERY 
-		#t = np.arange(0, 1, 1/if_Fs)
-		#t = np.arange(0, len(rds_ncoOut)/if_Fs, 1/if_Fs)
-		# if (block_count == 20):
+		mixer_rds = rds_ncoOut[:-1]*bb_rds_filt # MIX3R
+
+		rds_DEM_LPF_filt, rds_DEM_LPF_state = signal.lfilter(rds_DEM_LPF_coeffs, 1.0, mixer_rds, zi = rds_DEM_LPF_state) #LPF
+				
+		convolution_rs(rr_outp, rds_DEM_LPF_filt, rds_DEM_RR_coeffs, rr_ds, rr_us, rds_DEM_rr_state) #RATIONAL RESAMPLER
+
+		impulseResponseRootRaisedCosine(if_Fs, if_taps) # ROOT RAISED COSINE COEFFS
+		rds_DEM_RRC_filt, rds_DEM_RRC_state = signal.lfilter(impulseResponseRRC, 1.0, rr_outp, zi = rds_DEM_LPF_state) #RRC CONVOLUTION
+
+
+
+
+		# if block_count == 20:
 		# 	print(len(rds_ncoOut))
-		# 	plt.figure()
-		# 	plt.plot(rds_ncoOut[:], label='PLL Output')
-		# 	plt.plot(CR_rds_filt[:],label='PLL Input' )
-		# 	plt.xlabel('Time (s)')
-		# 	plt.xlim(1000, 1100)
-		# 	plt.ylabel('Amplitude')
-		# 	plt.legend(loc = 'upper left')
-		# 	plt.grid(True)
+		# 	fig, ax1 = plt.subplots()
+
+		# 	# Plot PLL Output (Left y-axis)
+		# 	ax1.plot(rds_ncoOut[:], color='blue', label='PLL Output')
+		# 	ax1.set_xlabel('Time (s)')
+		# 	ax1.set_ylabel('PLL Output', color='blue')
+		# 	ax1.tick_params(axis='y', labelcolor='blue')
+		# 	ax1.set_ylim(min(rds_ncoOut), max(rds_ncoOut))
+
+		# 	# Create a secondary y-axis for PLL Input
+		# 	ax2 = ax1.twinx()  
+
+		# 	# Plot PLL Input (Right y-axis)
+		# 	ax2.plot(CR_rds_filt[:], color='red', label='PLL Input')
+		# 	ax2.set_ylabel('PLL Input', color='red')
+		# 	ax2.tick_params(axis='y', labelcolor='red')
+		# 	ax2.set_ylim(min(CR_rds_filt), max(CR_rds_filt))
+
+		# 	# Set limits for x-axis
+		# 	plt.xlim(1000, 1020)
+
+		# 	# Add legend
+		# 	ax1.legend(loc='upper left')
+		# 	ax2.legend(loc='upper right')
+
+		# 	# Add grid
+		# 	ax1.grid(True)
+
+		# 	# Save the plot
 		# 	plt.savefig("../data/fmPLLinput" + str(block_count) + ".png")
+
+		# 	# Show the plot
 		# 	plt.show()
+
 		if block_count == 20:
-			print(len(rds_ncoOut))
+			print(len(rds_DEM_RRC_filt))
 			fig, ax1 = plt.subplots()
 
 			# Plot PLL Output (Left y-axis)
-			ax1.plot(rds_ncoOut[:], color='blue', label='PLL Output')
+			ax1.plot(rds_DEM_RRC_filt[:], color='blue', label='RRC Output')
 			ax1.set_xlabel('Time (s)')
-			ax1.set_ylabel('PLL Output', color='blue')
+			ax1.set_ylabel('RRC Output', color='blue')
 			ax1.tick_params(axis='y', labelcolor='blue')
-			ax1.set_ylim(min(rds_ncoOut), max(rds_ncoOut))
+			ax1.set_ylim(min(rds_DEM_RRC_filt), max(rds_DEM_RRC_filt))
 
 			# Create a secondary y-axis for PLL Input
 			ax2 = ax1.twinx()  
 
 			# Plot PLL Input (Right y-axis)
-			ax2.plot(CR_rds_filt[:], color='red', label='PLL Input')
+			ax2.plot(rr_outp[:], color='red', label='PLL Input')
 			ax2.set_ylabel('PLL Input', color='red')
 			ax2.tick_params(axis='y', labelcolor='red')
-			ax2.set_ylim(min(CR_rds_filt), max(CR_rds_filt))
+			ax2.set_ylim(min(rr_outp), max(rr_outp))
 
 			# Set limits for x-axis
 			plt.xlim(1000, 1020)
@@ -322,23 +359,8 @@ if __name__ == "__main__":
 			# Add grid
 			ax1.grid(True)
 
-			# Save the plot
-			plt.savefig("../data/fmPLLinput" + str(block_count) + ".png")
-
 			# Show the plot
 			plt.show()
-			
-		# mixer_rds = rds_ncoOut[:-1]*bb_rds_filt # MIX3R
-
-    	# rds_DEM_LPF_filt, rds_DEM_LPF_state = signal.lfilter(rds_DEM_LPF_coeffs, 1.0, mixer_rds, zi = rds_DEM_LPF_state) #LPF
-        
-        # convolution_rs(rr_outp, rds_DEM_LPF_filt, rds_DEM_RR_coeffs, rr_ds, rr_us, rds_DEM_rr_state) #RATIONAL RESAMPLER
-
-		# impulseResponseRootRaisedCosine(if_Fs, N_taps) # ROOT RAISED COSINE
-
-
-
-
 
 
 
