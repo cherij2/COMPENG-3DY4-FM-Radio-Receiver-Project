@@ -83,22 +83,20 @@ def state_saving_convolution (h,xb, previous): #this function does convolution w
 	
 	return yb, previous
 
-def convolution_rs(yb, xb, h, ds, us, state):
-    yb.clear()
-    yb.extend([0.0] * ((len(xb) * us) // ds))
+def convolution_rs(xb, h, ds, us, state):
+	print(type(len(xb)))
+	yb = np.zeros(int(len(xb)*us/ds))
+	for n in range(len(yb)):
+		phase = (n * ds) % us
+		for k in range(phase, len(h), us):
+			dx = (ds * n - k) // us
+			if dx >= 0:
+				yb[n] += h[k] * xb[dx]
+			else:
+				yb[n] += h[k] * state[dx]
 
-    for n in range(len(yb)):
-        phase = (n * ds) % us
-        for k in range(phase, len(h), us):
-            dx = (ds * n - k) // us
-
-            if dx >= 0:
-                yb[n] += h[k] * xb[dx]
-            else:
-                yb[n] += h[k] * state[dx]
-
-    state = xb[-len(state):]
-    return yb, state
+	state = xb[-len(state):]
+	return yb, state
 
 def delayBlock(input_block, state_block):
 	output_block = np.concatenate((state_block, input_block[:-len(state_block)]))
@@ -136,8 +134,10 @@ if __name__ == "__main__":
 	rr_fs_out = 2375 * 30
 	rr_fs_in = 240000
 	rr_gcd = math.gcd(rr_fs_out, rr_fs_in)
-	rr_us = rr_fs_out / rr_gcd
-	rr_ds = rr_fs_in / rr_gcd
+	rr_us = int(rr_fs_out / rr_gcd)
+	rr_ds = int(rr_fs_in / rr_gcd)
+	print (type(rr_us))
+	print (type(rr_ds))
 	rr_outp = [if_taps * rr_us]
 	rr_fs = rr_us*if_Fs
 	rr_fc = min((rr_us / rr_ds)*(rr_fs/2), rr_fs/2)
@@ -285,9 +285,10 @@ if __name__ == "__main__":
 
 		rds_DEM_LPF_filt, rds_DEM_LPF_state = signal.lfilter(rds_DEM_LPF_coeffs, 1.0, mixer_rds, zi = rds_DEM_LPF_state) #LPF
 				
-		convolution_rs(rr_outp, rds_DEM_LPF_filt, rds_DEM_RR_coeffs, rr_ds, rr_us, rds_DEM_rr_state) #RATIONAL RESAMPLER
+		
+		rr_outp, rds_DEM_rr_state = convolution_rs( rds_DEM_LPF_filt, rds_DEM_RR_coeffs, rr_ds, rr_us, rds_DEM_rr_state) #RATIONAL RESAMPLER
 
-		impulseResponseRootRaisedCosine(if_Fs, if_taps) # ROOT RAISED COSINE COEFFS
+		impulseResponseRRC = impulseResponseRootRaisedCosine(if_Fs, if_taps) # ROOT RAISED COSINE COEFFS
 		rds_DEM_RRC_filt, rds_DEM_RRC_state = signal.lfilter(impulseResponseRRC, 1.0, rr_outp, zi = rds_DEM_LPF_state) #RRC CONVOLUTION
 
 
@@ -350,7 +351,7 @@ if __name__ == "__main__":
 			ax2.set_ylim(min(rr_outp), max(rr_outp))
 
 			# Set limits for x-axis
-			plt.xlim(1000, 1020)
+			plt.xlim(0, 1500)
 
 			# Add legend
 			ax1.legend(loc='upper left')
