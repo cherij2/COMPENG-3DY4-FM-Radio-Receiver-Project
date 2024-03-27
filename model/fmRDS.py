@@ -18,6 +18,7 @@ from fmSupportLib import fmDemodArctan, fmPlotPSD, derivativeDemod
 from fmMonoBasic import LPF, BPF
 from fmPll import fmPll
 from fmRRC import impulseResponseRootRaisedCosine
+from fmCDR import manchester_encoding, manchester_decode
 # for take-home add your functions
 
 rf_Fc = 100e3
@@ -290,6 +291,9 @@ if __name__ == "__main__":
 
 		impulseResponseRRC = impulseResponseRootRaisedCosine(if_Fs, if_taps) # ROOT RAISED COSINE COEFFS
 		rds_DEM_RRC_filt, rds_DEM_RRC_state = signal.lfilter(impulseResponseRRC, 1.0, rr_outp, zi = rds_DEM_LPF_state) #RRC CONVOLUTION
+		#USE rr_fs_out INSTEAD OF if_Fs NOW
+		#Sampling rate is = 2375 * SPS(Samples per Symbol), in our case we chose sps = 30, sampling rate is now 71250 samples/sec
+
 
 
 
