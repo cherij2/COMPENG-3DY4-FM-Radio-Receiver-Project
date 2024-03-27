@@ -95,10 +95,10 @@ def convolution_rs(yb, xb, h, ds, us, state):
             if dx >= 0:
                 yb[n] += h[k] * xb[dx]
             else:
-                yb[n] += h[k] * state[len(state) - 1 + dx]
+                yb[n] += h[k] * state[dx]
 
-    state[:] = xb[-len(state):]
-	return yb, state
+    state = xb[-len(state):]
+    return yb, state
 
 def delayBlock(input_block, state_block):
 	output_block = np.concatenate((state_block, input_block[:-len(state_block)]))
@@ -146,10 +146,10 @@ if __name__ == "__main__":
 	crr_fs = (rr_us / rr_ds) * if_Fs
 
 	# set up the subfigures for plotting
-	subfig_height = np.array([0.8, 2, 1.6]) # relative heights of the subfigures
-	plt.rc('figure', figsize=(7.5, 7.5))	# the size of the entire figure
-	fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, gridspec_kw={'height_ratios': subfig_height})
-	fig.subplots_adjust(hspace = .6)
+	# subfig_height = np.array([0.8, 2, 1.6]) # relative heights of the subfigures
+	# plt.rc('figure', figsize=(7.5, 7.5))	# the size of the entire figure
+	# fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, gridspec_kw={'height_ratios': subfig_height})
+	# fig.subplots_adjust(hspace = .6)
 
 	# select a block_size that is a multiple of KB
 	# and a multiple of decimation factors
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 	
 	
 	state_delay = np.zeros((audio_taps-1)//2)
-    rds_state_delay = np.zeros((audio_taps-1)//2)
+	rds_state_delay = np.zeros((audio_taps-1)//2)
 	
 	# add state as needed for the mono channel filter
 	state_lpf = np.zeros(audio_taps-1)
@@ -175,9 +175,9 @@ if __name__ == "__main__":
 	state_stereoband = np.zeros(audio_taps-1)
 	bb_state_rds = np.zeros(audio_taps-1)
 	CR_state_rds = np.zeros(audio_taps-1)
-    CR_state_rds = np.zeros(audio_taps-1)
-    CR_state_rds_pll = np.zeros(audio_taps-1)
-    rds_DEM_LPF_state = np.zeros(audio_taps-1)
+	CR_state_rds = np.zeros(audio_taps-1)
+	CR_state_rds_pll = initial_state_rds
+	rds_DEM_LPF_state = np.zeros(audio_taps-1)
 	rds_DEM_rr_state = np.zeros(audio_taps-1)
 
 	#mixer state
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
 	# if the number of samples in the last block is less than the block size
 	# it is fine to ignore the last few samples from the raw IQ file
-	while (block_count+1)*block_size < len(iq_data):#5*block_size: #len(iq_data):
+	while (block_count+1)*block_size < 22*block_size: #len(iq_data):
 
 		# if you wish to have shorter runtimes while troubleshooting
 		# you can control the above loop exit condition as you see fit
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 		final_mono, state_delay = delayBlock(mono_filt, state_delay)
 		# downsample audio data
 		# to be updated by you during in-lab (same code for takehome)fmPll		
-        mono_block = final_mono[::audio_decim]
+		mono_block = final_mono[::audio_decim]
 
 		# concatenate the most recently processed audio_block
 		# to the previous blocks stored already in audio_data
@@ -259,22 +259,27 @@ if __name__ == "__main__":
 
 		delayed_rds, rds_state_delay = delayBlock(bb_rds_filt, rds_state_delay) #ALL PASS FILTER
 
-        nonLin_rds = bb_rds_filt * bb_rds_filt # SQAURING NONLIN
+		nonLin_rds = bb_rds_filt * bb_rds_filt # SQAURING NONLIN
 
 		CR_rds_filt, CR_state_rds = signal.lfilter(rds_CR_coeffs, 1.0, nonLin_rds, zi = CR_state_rds) # BPF CARRIER RECOVERY
 
-		rds_ncoOut, CR_state_rds_pll = fmPll(CR_rds_filt, 114000, if_Fs, ncoScale = 0.5 , normBandwidth=0.003, state = CR_state_rds_pll) # PLL
+		rds_ncoOut, CR_state_rds_pll = fmPll(CR_rds_filt, 114000, if_Fs, ncoScale = 0.5, state = CR_state_rds_pll) # PLL
 
 		#GRAPHING CARRIER RECVOERY 
-		t = np.arange(0, 1, 1/if_Fs)
-
-		plt.figure()
-		plt.plot(t, rds_ncoOut, label='PLL Output')
-		plt.xlabel('Time (s)')
-		plt.ylabel('Amplitude')
-		plt.grid(True)
-		plt.show()
-
+		#t = np.arange(0, 1, 1/if_Fs)
+		#t = np.arange(0, len(rds_ncoOut)/if_Fs, 1/if_Fs)
+		if (block_count == 20):
+			print(len(rds_ncoOut))
+			plt.figure()
+			plt.plot(rds_ncoOut[1850:2050], label='PLL Output')
+			plt.plot(CR_rds_filt[1850:2050],label='PLL Input' )
+			plt.xlabel('Time (s)')
+			plt.ylabel('Amplitude')
+			plt.legend(loc = 'upper left')
+			plt.grid(True)
+			plt.savefig("../data/fmPLLinput" + str(block_count) + ".png")
+			plt.show()
+			
 		# mixer_rds = rds_ncoOut[:-1]*bb_rds_filt # MIX3R
 
     	# rds_DEM_LPF_filt, rds_DEM_LPF_state = signal.lfilter(rds_DEM_LPF_coeffs, 1.0, mixer_rds, zi = rds_DEM_LPF_state) #LPF
@@ -294,59 +299,59 @@ if __name__ == "__main__":
 
 
   
-		print("mono filt size: ", len(mono_filt), " stereo filt size: ", len(mixer_filt))
-		print("mono block size: ", len(mono_block), " stereo block size: ", len(stereo_block))
+		#print("mono filt size: ", len(mono_filt), " stereo filt size: ", len(mixer_filt))
+		#print("mono block size: ", len(mono_block), " stereo block size: ", len(stereo_block))
 
 		# to save runtime select the range of blocks to log data
 		# this includes both saving binary files as well plotting PSD
 		# below we assume we want to plot for graphs for blocks 10 and 11
-		if block_count >= 10 and block_count < 12:
+		# if block_count >= 10 and block_count < 12:
 
-			# plot PSD of selected block after FM demodulation
-			ax0.clear()
-			fmPlotPSD(ax0, fm_demod, (rf_Fs/rf_decim)/1e3, subfig_height[0], \
-					'Demodulated FM (block ' + str(block_count) + ')')
-			# output binary file name (where samples are written from Python)
-			fm_demod_fname = "../data/fm_demod_" + str(block_count) + ".bin"
-			# create binary file where each sample is a 32-bit float
-			fm_demod.astype('float32').tofile(fm_demod_fname)
+		# 	# plot PSD of selected block after FM demodulation
+		# 	ax0.clear()
+		# 	fmPlotPSD(ax0, fm_demod, (rf_Fs/rf_decim)/1e3, subfig_height[0], \
+		# 			'Demodulated FM (block ' + str(block_count) + ')')
+		# 	# output binary file name (where samples are written from Python)
+		# 	fm_demod_fname = "../data/fm_demod_" + str(block_count) + ".bin"
+		# 	# create binary file where each sample is a 32-bit float
+		# 	fm_demod.astype('float32').tofile(fm_demod_fname)
 
-			# plot PSD of selected block after extracting mono audio
-			# ... change as needed
-			fmPlotPSD(ax1, mixer_filt, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Stereo')
+		# 	# plot PSD of selected block after extracting mono audio
+		# 	# ... change as needed
+		# 	fmPlotPSD(ax1, mixer_filt, (rf_Fs/rf_decim)/1e3, subfig_height[1], 'Extracted Stereo')
 
-			# plot PSD of selected block after downsampling mono audio
-			# ... change as needed
-			fmPlotPSD(ax2, stereo_block, audio_Fs/1e3, subfig_height[2], 'Downsampled Stereo Audio')
+		# 	# plot PSD of selected block after downsampling mono audio
+		# 	# ... change as needed
+		# 	fmPlotPSD(ax2, stereo_block, audio_Fs/1e3, subfig_height[2], 'Downsampled Stereo Audio')
 			
 
 
-			# # save figure to file
-			fig.savefig("../data/fmStereoBlock" + str(block_count) + ".png")
+		# 	# # save figure to file
+		# 	fig.savefig("../data/fmStereoBlock" + str(block_count) + ".png")
 
 		block_count += 1
 	
-	print('Finished processing all the blocks from the recorded I/Q samples')
-	print("length of right channel: ", len(right_data), " length of left channel", len(left_data))
+	# print('Finished processing all the blocks from the recorded I/Q samples')
+	# print("length of right channel: ", len(right_data), " length of left channel", len(left_data))
 	
-	audio_data = np.hstack((left_data[:, np.newaxis], right_data[:, np.newaxis]))
-	print("length of combined data: ", len(audio_data))
-	out_fname_left = "../data/fmleft.wav"
-	wavfile.write(out_fname_left, int(audio_Fs), np.int16((left_data/2)*32767))
-	print("Written audio samples to \"" + out_fname_left + "\" in signed 16-bit format")
+	# audio_data = np.hstack((left_data[:, np.newaxis], right_data[:, np.newaxis]))
+	# print("length of combined data: ", len(audio_data))
+	# out_fname_left = "../data/fmleft.wav"
+	# wavfile.write(out_fname_left, int(audio_Fs), np.int16((left_data/2)*32767))
+	# print("Written audio samples to \"" + out_fname_left + "\" in signed 16-bit format")
 
-	out_fname_right = "../data/fmright.wav"
-	wavfile.write(out_fname_right, int(audio_Fs), np.int16((right_data/2)*32767))
-	print("Written audio samples to \"" + out_fname_right + "\" in signed 16-bit format")
+	# out_fname_right = "../data/fmright.wav"
+	# wavfile.write(out_fname_right, int(audio_Fs), np.int16((right_data/2)*32767))
+	# print("Written audio samples to \"" + out_fname_right + "\" in signed 16-bit format")
 
-	# write audio data to file
-	out_fname = "../data/fmStereo.wav"
-	wavfile.write(out_fname, int(audio_Fs), np.int16((audio_data/2)*32767))
-	print("Written audio samples to \"" + out_fname + "\" in signed 16-bit format")
+	# # write audio data to file
+	# out_fname = "../data/fmStereo.wav"
+	# wavfile.write(out_fname, int(audio_Fs), np.int16((audio_data/2)*32767))
+	# print("Written audio samples to \"" + out_fname + "\" in signed 16-bit format")
 
-	out_fname1 = "../data/fmMono.wav"
-	wavfile.write(out_fname1, int(audio_Fs), np.int16((mono_data/2)*32767))
-	print("Written audio samples to \"" + out_fname1 + "\" in signed 16-bit format")
+	# out_fname1 = "../data/fmMono.wav"
+	# wavfile.write(out_fname1, int(audio_Fs), np.int16((mono_data/2)*32767))
+	# print("Written audio samples to \"" + out_fname1 + "\" in signed 16-bit format")
 
 	# uncomment assuming you wish to show some plots
 	#plt.show()
