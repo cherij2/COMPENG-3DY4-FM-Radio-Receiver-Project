@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
 			
 			dem_mixer.resize(CR_rds_filtered.size());
 			for(int i = 0; i<CR_rds_filtered.size();i++){
-				dem_mixer[i] = CR_rds_filtered[i] * rds_filtered[i];
+				dem_mixer[i] += rds_NCO_outp[i] * rds_filtered[i];
 			}
 			conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
 
@@ -338,8 +338,8 @@ int main(int argc, char *argv[])
 			std::cerr<<" dem resamp filtered size "<<dem_rds_resamp_filtered.size()<<std::endl;
 			if (block_id == 20){
 				std::vector<float> pllinput_index;
-				genIndexVector(pllinput_index, CR_rds_filtered.size());
-				logVector("CR_rds_filtered", pllinput_index, CR_rds_filtered);
+				genIndexVector(pllinput_index, dem_mixer.size());
+				logVector("dem_mixer", pllinput_index, dem_mixer);
 				std::vector<float> vector_index;
 				genIndexVector(vector_index, outp_rrc.size());
 				logVector("outp_rrc", vector_index, outp_rrc);
