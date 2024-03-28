@@ -72,17 +72,17 @@ void get_bits (const std::vector<float> &rrc_after, int sps, std::vector<float> 
             for(int t = (rrc_after.size() - sps); t < sps; t++) {
                 // if max or min
                 if(rrc_after[t] > 0) {
-                    bits.push_back(1);  //local max
+                    //bits.push_back(1);  //local max
+                    bits[i] = 1;
                 }  
                 if(rrc_after[t] < 0) {
-                    bits.push_back(0);  //local max
+                    //bits.push_back(0);  //local max
+                    bits[i] = -1;
                 }
             }
         }
         count++;
     }
-        
-
 }
 
 

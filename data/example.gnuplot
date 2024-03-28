@@ -8,7 +8,7 @@ set multiplot layout 3,1 scale 1.0,1.0  # set two plots for this figure
 set ylabel 'Sample value'               # set y-axis label
 set xlabel 'dem_mixer output'                   # set x-axis label
 set yrange [-1:1]                       # set y plot range
-set xrange [0:30]                      # sset x plot range
+set xrange [0:1000]                      # sset x plot range
 
 
 plot '../data/bits.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
@@ -19,7 +19,7 @@ set xlabel 'rrc outp'               # set x-axis label
 set yrange [-1.2:1.2]                    # set y plot range
 set xrange [0:1000] 
 set y2range [-0.2:1.2]                      # set x plot range
-#set x2range[0:33]
+#set x2range[0:1000]
 plot '../data/outp_rrc.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#008800' notitle,\
      '../data/bits.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#32a852' notitle axes x1y2
 
