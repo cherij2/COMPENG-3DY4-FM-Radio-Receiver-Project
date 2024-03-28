@@ -18,7 +18,7 @@
 template<typename T>
 class ThreadSafeQueue;
 void rf_thread(int mode);
-void audio_thread(int mode);
+void audio_thread(int mode, std::string channel);
 std::vector<float> produce_data(int mode);
 void consume_data();
 

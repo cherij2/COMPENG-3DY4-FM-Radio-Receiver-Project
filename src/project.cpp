@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	// rf_thread(mode);
 	// audio_thread(mode);
 	std::thread rf_producer(rf_thread, mode);  // Create the RF producer thread
-    std::thread audio_consumer(audio_thread, mode);  // Create the audio consumer thread
+    std::thread audio_consumer(audio_thread, mode, channel);  // Create the audio consumer thread
 
     // Wait for both threads to finish
     

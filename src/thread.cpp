@@ -157,6 +157,7 @@ void audio_thread(int mode, std::string channel) {
 	State state = {0.0, 0.0, 1.0, 0.0, 0, 1.0};
 	float pilot_lockInFreq = 19000;
 	std::vector<float> pilot_NCO_outp;
+    std::vector<float> pilot_NCO_outpQ;
 	float normBandwidth = 0.01;
 	float phaseAdjust = 0.0;
 	float ncoScale = 2.0;
@@ -209,7 +210,7 @@ void audio_thread(int mode, std::string channel) {
 
         // std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<<"stereo filtered size: "<<stereo_filtered.size()<<std::endl;
 
-        fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
+        fmPll(pilot_filtered, pilot_NCO_outp,pilot_NCO_outpQ, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
 		mixer.resize(stereo_filtered.size(), 0.0);
 		for(unsigned int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
