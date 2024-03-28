@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
     State rds_state = {0.0, 0.0, 1.0, 0.0, 0, 1.0};
     float rds_lockInFreq = 114000;
     std::vector<float> rds_NCO_outp;
-    float rds_normBandwidth = 0.004;
+    float rds_normBandwidth = 0.003;
     float rds_phaseAdjust = 0.0;
     float rds_ncoScale = 0.5;
 
@@ -319,21 +319,25 @@ int main(int argc, char *argv[])
 			//ALL PASS FILTER
     		delayBlock(rds_filtered, rds_processed_delay, rds_state_delay);
 			conv_ds_fast(CR_rds_filtered, rds_nonlin, CR_rds_BPF_coeffs, 1, CR_state_rds);
+			
+			//PLL
 			fmPll(CR_rds_filtered, rds_NCO_outp, rds_lockInFreq, values.IF_Fs, rds_ncoScale, rds_phaseAdjust, rds_normBandwidth, rds_state); 		
 			
+
+
 			dem_mixer.resize(CR_rds_filtered.size());
 			for(int i = 0; i<CR_rds_filtered.size();i++){
-				dem_mixer[i] += rds_NCO_outp[i] * rds_filtered[i];
+				dem_mixer[i] = 45 * rds_NCO_outp[i] * rds_processed_delay[i];
 			}
+			
 			conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
 
-    		conv_rs(dem_rds_resamp_filtered, dem_rds_LPF_filtered, dem_rds_resamp_coeffs, values.audio_decim, values.audio_expan, dem_state_rds_LPF);
+    		conv_rs(dem_rds_resamp_filtered, dem_rds_LPF_filtered, dem_rds_resamp_coeffs, values.rds_down, values.rds_up, dem_state_rds_LPF);
 			
 			impulseResponseRootRaisedCosine(RRC_coeffs, rds_fs_rat_res, values.num_Taps);
 			conv_ds_fast(outp_rrc, dem_rds_resamp_filtered, RRC_coeffs, 1, state_rrc);
+			
 
-			
-			
 			
 			std::cerr<<" dem resamp filtered size "<<dem_rds_resamp_filtered.size()<<std::endl;
 			if (block_id == 20){
@@ -346,7 +350,6 @@ int main(int argc, char *argv[])
 				std::vector<float> dem_mixer_index;
 				genIndexVector(dem_mixer_index, rds_NCO_outp.size());
 				logVector("rds_NCO_outp", dem_mixer_index, rds_NCO_outp);
-
 			}
 	
 	

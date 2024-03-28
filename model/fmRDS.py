@@ -208,9 +208,9 @@ if __name__ == "__main__":
 				zi=state_q_lpf_100k)
 
 
-		# downsample the I/Q data from the FM channel
-		i_ds = i_filt[::rf_decim]
-		q_ds = q_filt[::rf_decim]
+		# downsamrds_downple the I/Q data from the FM channel
+		i_ds = i_rds_downfilt[::rf_decim]
+		q_ds = q_rds_downfilt[::rf_decim]
 
 		# FM demodulator
 		

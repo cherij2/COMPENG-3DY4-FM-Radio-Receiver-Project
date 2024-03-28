@@ -7,8 +7,10 @@ set multiplot layout 3,1 scale 1.0,1.0  # set two plots for this figure
 # time domain
 set ylabel 'Sample value'               # set y-axis label
 set xlabel 'dem_mixer output'                   # set x-axis label
-set yrange [-2:2]                       # set y plot range
-set xrange [0:20]                      # set x plot range
+set yrange [-0.001:0.001]                       # set y plot range
+set xrange [0:20]                      # sset x plot range
+
+
 plot '../data/dem_mixer.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#000088' notitle
 
 # freq domain (Fourier)
@@ -22,9 +24,11 @@ plot '../data/outp_rrc.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#008800' noti
 set ylabel 'Spectrum (dB/Hz)'            # set y-axis label
 set xlabel 'PLl Input'             # set x-axis label
 set autoscale
-#set yrange [:]                       # set y plot range
+set yrange [-1:1]                       # set y plot range
+set y2range [-1:1]
 set xrange [0:119]                       # set x plot range
 # add your own .dat file for PSD as part of the take-home
-plot '../data/rds_NCO_outp.dat' using 1:2 with lines lt 1 lw 3 lc rgb '#880000' notitle
+plot '../data/rds_NCO_outp.dat' using 1:2 with lines lt 1 lw 3 lc rgb '#880000' notitle, \
+     '../data/CR_rds_filtered.dat' using 1:2 with lines lt 1 lw 3 lc rgb '#880000' notitle axes x1y2
 
 unset multiplot

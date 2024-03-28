@@ -12,6 +12,8 @@ struct Mode{
 	float audio_expan;
 	int BLOCK_SIZE;
 	int SPS;
+	int rds_up;
+	int rds_down;
 
 Mode();
 
