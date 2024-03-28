@@ -4,7 +4,29 @@
 #include "filter.h"
 #include "RFfront.h"
 #include "thread.h"
-    
+
+#include <cmath>
+#include <vector>
+
+std::vector<float> impulseResponseRootRaisedCosine(float Fs, int N_taps) {
+    float symbol = 1/2375.0;
+    float beta = 0.90;
+
+    std::vector<float> impulseResponseRRC(N_taps);
+
+    for(int k = 0; k < N_taps; ++k) {
+        float t = -(k-N_taps/2)/Fs;
+        if(t == 0.0) {
+            impulseResponseRRC[k] = 1.0 + beta * ((4/M_PI)-1)
+        } else if (t == -T_symbol / (4 * beta) || t == T_symbol / (4*beta)) {
+            impulseResponseRRC[k] = (beta / std::sqrt(2)) * (((1 + 2/M_PI) * (std::sin(M_PI / (4*beta)))) + ((1 - 2/M_PI) * (std::cos(M_PI / (4*beta)))));
+        } else {
+            impulseResponseRRC[k] = (std::sin(M_PI * t * (1-beta) / T_symbol) +
+                4*beta * t/T_symbol * std::cos(M_PI * t * (1+beta) / T_symbol)) / 
+                (M_PI * t * (1 - (4 * beta * t/T_symbol) * (4*beta* t/T_symbol)) / T_symbol);
+        }
+    }
+}
     
 void preDataProcessing(int mode) {
     Mode values;
@@ -24,8 +46,7 @@ void preDataProcessing(int mode) {
 	std::vector<float> rds_nonlin;
 
 	float CR_RDSFb = 113500;
-	float CR_RDSFe = 114500;
-
+	float CR_RDSFe = 11450
     //for BLOCK DELAY RDS
     std::vector<float> rds_processed_delay;
     std::vector<float> rds_state_delay((values.num_Taps-1)/2, 0.0);
@@ -59,12 +80,10 @@ void preDataProcessing(int mode) {
     // FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
 	// BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
 	// BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
-
+    
 
     BPFCoeffs(RDSFb, RDSFe, values.IF_Fs, values.num_Taps, rds_BPF_coeffs);
     conv_ds_fast(rds_filtered, drds_NCO_outpemod, rds_BPF_coeffs, 1, state_rds_bb);
-
-
 
     // ========================
     // CARRIER RECOVERY STARTS
@@ -78,6 +97,7 @@ void preDataProcessing(int mode) {
     delayBlock(rds_filtered, rds_processed_delay, rds_state_delay);
 
     //BPF CARRIER RECOVERY
+    BPFCoeffs(CR_RDSFb, CR_RDSFe, values.IF_Fs, values.num_Taps, CR_rds_BPF_coeffs);
     conv_ds_fast(CR_rds_filtered, rds_nonlin, CR_rds_BPF_coeffs, 1, CR_state_rds);
 
     //PLL CARRIER RECOVERY
@@ -93,7 +113,7 @@ void preDataProcessing(int mode) {
     
     //MIXER
     for(int i = 0; i < CR_rds_filtered.size(); i++) {
-		dem_mixer[i] = CR_rds_filtered[i] * rds_filtered[i];
+		dem_mixer[i] += CR_rds_filtered[i] * rds_filtered[i];
 	}
 
     //LPF 
@@ -101,12 +121,13 @@ void preDataProcessing(int mode) {
     conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
 
     //CHECK IF CORRECT W/ TA, conceptually dont really get
-    //Rational Resampler
+    //Rational Resampler ?? how does this work
+    
     impulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs);
     //conv_rs(std::vector<float> &yb, const std::vector<float> &xb, const std::vector<float> &h, int ds, int us, std::vector<float> &state)
     conv_rs(dem_rds_resamp_filtered, dem_rds_LPF_filtered, dem_rds_resamp_coeffs, values.audio_decim, values.audio_expan, dem_state_rds_LPF);
     
-
+   // impulseResponseRootRaisedCosine(float Fs, int N_taps)
 
 
 }

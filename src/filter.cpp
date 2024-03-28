@@ -136,6 +136,7 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     state.prev_ncoOut = prev_ncoOut;
 
 }
+
 void delayBlock(const std::vector<float> &input_block, std::vector<float> &output_block, std::vector<float> &state) {
 	output_block.clear();
 	output_block.resize(input_block.size());

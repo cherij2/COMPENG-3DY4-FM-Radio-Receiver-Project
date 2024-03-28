@@ -48,8 +48,18 @@ def manchester_encoding(rrc_after, bits, temp, temp2):
 def manchester_encoding_fast(rrc_after, bits, SPS, temp):
     temp = 0
     
-    for i in range(rrc_after-1):
-        if(rrc_after[i] < temp):
+    for i in [0: range(rrc_after-1): SPS]:
+        #0.3 added to prevent false maximums
+        if(temp < 0 and rrc_after[i] > 0.3):
+            bits.append(0)  # local min
+            temp = rrc_after[i]
+        if(temp > 0 and rrc_after[i] > 0.3):
+            bits.append(1)  # local max
+            temp = rrc_after[i]
+            #change this to an acceptable value
+        if(i == int(len(rrc_after)/30)):
+            temp = rrc_after[i]
+        
             
 
 
