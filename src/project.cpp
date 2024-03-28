@@ -184,9 +184,10 @@ int main(int argc, char *argv[])
     std::vector<float> rds_processed_delay;
     std::vector<float> rds_state_delay((values.num_Taps-1)/2, 0.0);
 
-    State rds_state = {0.0, 0.0, 1.0, 0.0, 0, 1.0};
+    State rds_state = {0.0, 0.0, 1.0, 0.0, 0, 1.0, 1.0};
     float rds_lockInFreq = 114000;
     std::vector<float> rds_NCO_outp;
+	std::vector<float> rds_NCO_outpQ;
     float rds_normBandwidth = 0.003;
     float rds_phaseAdjust = 0.0;
     float rds_ncoScale = 0.5;
@@ -308,26 +309,26 @@ int main(int argc, char *argv[])
 	// 		//--------------------END OF RF-FRONT END-------------------
 
 	//		//---------------------START OF RDS-------------------------
-			std::cerr<<"before rds"<<std::endl;
+			// std::cerr<<"before rds"<<std::endl;
 			conv_ds_fast(rds_filtered, demod, rds_BPF_coeffs, 1, state_rds_bb);
-			std::cerr<<"after rds 0"<<std::endl;
+			// std::cerr<<"after rds 0"<<std::endl;
 			rds_nonlin.resize(rds_filtered.size());
 			for(int i = 0; i < rds_filtered.size(); i++) {
 				rds_nonlin[i] = rds_filtered[i] * rds_filtered[i];
 			}
-			std::cerr<<"after non linearity"<<std::endl;
+			// std::cerr<<"after non linearity"<<std::endl;
 			//ALL PASS FILTER
     		delayBlock(rds_filtered, rds_processed_delay, rds_state_delay);
 			conv_ds_fast(CR_rds_filtered, rds_nonlin, CR_rds_BPF_coeffs, 1, CR_state_rds);
-			
+			// std::cerr<<"tst"<<std::endl;
 			//PLL
-			fmPll(CR_rds_filtered, rds_NCO_outp, rds_lockInFreq, values.IF_Fs, rds_ncoScale, rds_phaseAdjust, rds_normBandwidth, rds_state); 		
-			
+			fmPll(CR_rds_filtered, rds_NCO_outp, rds_NCO_outpQ, rds_lockInFreq, values.IF_Fs, rds_ncoScale, rds_phaseAdjust, rds_normBandwidth, rds_state); 		
+			// std::cerr<<"after pll"<<std::endl;
 
 
 			dem_mixer.resize(CR_rds_filtered.size());
 			for(int i = 0; i<CR_rds_filtered.size();i++){
-				dem_mixer[i] = 45 * rds_NCO_outp[i] * rds_processed_delay[i];
+				dem_mixer[i] = 50 * rds_NCO_outp[i] * rds_processed_delay[i];
 			}
 			
 			conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
@@ -336,7 +337,10 @@ int main(int argc, char *argv[])
 			
 			impulseResponseRootRaisedCosine(RRC_coeffs, rds_fs_rat_res, values.num_Taps);
 			conv_ds_fast(outp_rrc, dem_rds_resamp_filtered, RRC_coeffs, 1, state_rrc);
-			
+			std::vector<float> bits;
+			// std::cerr<<"before get bits"<<std::endl;
+			get_bits(outp_rrc, values.SPS, bits);
+			// std::cerr<<"after getting bits"<<std::endl;
 
 			
 			std::cerr<<" dem resamp filtered size "<<dem_rds_resamp_filtered.size()<<std::endl;
@@ -350,6 +354,9 @@ int main(int argc, char *argv[])
 				std::vector<float> dem_mixer_index;
 				genIndexVector(dem_mixer_index, rds_NCO_outp.size());
 				logVector("rds_NCO_outp", dem_mixer_index, rds_NCO_outp);
+				std::vector<float>output_bits;
+				genIndexVector(output_bits, bits.size());
+				logVector("bits", output_bits, bits);
 			}
 	
 	

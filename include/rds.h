@@ -17,6 +17,9 @@
 
 void impulseResponseRootRaisedCosine(std::vector<float> &h, float Fs, int N_taps);
 
+
+void get_bits (const std::vector<float> &rrc_after, int sps, std::vector<float> &bits);
+
 void preDataProcessing(int mode);
 
 

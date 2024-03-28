@@ -28,6 +28,61 @@ void impulseResponseRootRaisedCosine(std::vector<float> &h, float Fs, int N_taps
         }
     }    
 }
+
+void get_bits (const std::vector<float> &rrc_after, int sps, std::vector<float> &bits) {
+
+    int check_within = 3;
+    int offset = 0;
+    int i;
+    int count = 0;
+
+    //to get first offset, change the start to the peak
+    for(int k = 1; k < sps; k++) {
+        // if max or min
+        if((rrc_after[k] > rrc_after[k + 1] && rrc_after[k] > rrc_after[k - 1]) 
+        || (rrc_after[k] < rrc_after[k + 1] && rrc_after[k] < rrc_after[k - 1])) {
+            offset = k;
+            count++;
+        }
+    }
+
+    //this keeps running again and again and again and again and again and again 
+    for(int i = offset+5; i < (int)rrc_after.size() - 5; i += sps) {
+        int check_fb = i - check_within;
+        //std::cerr<<"check _rb"<<std::endl;
+        int check_fe = i + check_within;
+        
+        for(int j = check_fb; j < check_fe; j++) {
+            //std::cerr<<"check _rb: "<< i << "\n" <<std::endl;
+            if((rrc_after[j] > rrc_after[j + 1] && rrc_after[j] > rrc_after[j - 1]) 
+            || (rrc_after[j] < rrc_after[j + 1] && rrc_after[j] < rrc_after[j - 1])){
+                i = j;
+            }
+        }
+        if(rrc_after[i] > 0) {
+            bits.push_back(1);  //local max
+        }  
+        if(rrc_after[i] < 0) {
+            bits.push_back(0);  //local max
+        }
+        if(count >= std::floor(rrc_after.size() / sps)) {
+            for(int t = (rrc_after.size() - sps); t < sps; t++) {
+                // if max or min
+                if(rrc_after[t] > 0) {
+                    bits.push_back(1);  //local max
+                }  
+                if(rrc_after[t] < 0) {
+                    bits.push_back(0);  //local max
+                }
+            }
+        }
+        count++;
+    }
+        
+
+}
+
+
     
 // void preDataProcessing(int mode) {
 //     Mode values;
