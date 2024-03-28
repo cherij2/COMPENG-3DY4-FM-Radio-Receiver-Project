@@ -32,21 +32,22 @@ def impulseResponseRootRaisedCosine(Fs, N_taps):
 	beta = 0.90
 
 	# the RRC inpulse response that will be computed in this function
-	impulseResponseRRC = np.empty(N_taps)
+	h = np.empty(N_taps)
 
 	for k in range(N_taps):
-		t = float((k-N_taps/2))/Fs
+		t = float(-(k-N_taps/2))/Fs
 		# we ignore the 1/T_symbol scale factor
-		if t == 0.0: impulseResponseRRC[k] = 1.0 + beta*((4/math.pi)-1)
+		if t == 0.0: 
+			h[k] = 1.0 + beta*((4/math.pi)-1)
 		elif t == -T_symbol/(4*beta) or t == T_symbol/(4*beta):
-			impulseResponseRRC[k] = (beta/np.sqrt(2))*(((1+2/math.pi)* \
+			h[k] = (beta/np.sqrt(2))*(((1+2/math.pi)* \
 					(math.sin(math.pi/(4*beta)))) + ((1-2/math.pi)*(math.cos(math.pi/(4*beta)))))
-		else: impulseResponseRRC[k] = (math.sin(math.pi*t*(1-beta)/T_symbol) +  \
+		else: h[k] = (math.sin(math.pi*t*(1-beta)/T_symbol) +  \
 					4*beta*(t/T_symbol)*math.cos(math.pi*t*(1+beta)/T_symbol))/ \
 					(math.pi*t*(1-(4*beta*t/T_symbol)*(4*beta*t/T_symbol))/T_symbol)
 
 	# returns the RRC impulse response to be used by convolution
-	return impulseResponseRRC
+	return h
 
 if __name__ == "__main__":
 

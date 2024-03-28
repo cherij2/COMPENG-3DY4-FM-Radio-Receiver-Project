@@ -23,6 +23,7 @@ Ontario, Canada
 #include "RFfront.h"
 #include "mode.h"
 #include "thread.h"
+#include "rds.h"
 
 
 
@@ -173,6 +174,12 @@ int main(int argc, char *argv[])
 	float CR_RDSFb = 113500;
 	float CR_RDSFe = 114500;
 
+	//WHAT DO FOR MODE 1 AND 3??
+	float rds_fs_rat_res = values.SPS * 2375;
+	std::vector<float> outp_rrc;
+	std::vector<float> state_rrc(values.num_Taps-1, 0.0);
+
+
     //for BLOCK DELAY RDS
     std::vector<float> rds_processed_delay;
     std::vector<float> rds_state_delay((values.num_Taps-1)/2, 0.0);
@@ -191,13 +198,13 @@ int main(int argc, char *argv[])
     std::vector<float> dem_state_rds_LPF(values.num_Taps-1, 0.0);
 
 
-    // float dem_resamplerFs = 2375 * values.SPS;
-    // float dem_resamplerFc = std::min((values.audio_expan / values.audio_decim) *(2375/2), (2375/2));
-	// std::vector<float> dem_rds_resamp_coeffs(values.num_Taps * values.audio_expan, 0.0);
-    // std::vector<float> dem_rds_resamp_filtered;
-    // std::vector<float> dem_state_rds_resamp(values.num_Taps-1, 0.0);
+    float dem_resamplerFs = 2375 * values.SPS;
+    float dem_resamplerFc = std::min((values.audio_expan / values.audio_decim) *(2375.0/2), (2375.0/2));
+	std::vector<float> dem_rds_resamp_coeffs(values.num_Taps * values.audio_expan, 0.0);
+    std::vector<float> dem_rds_resamp_filtered;
+    std::vector<float> dem_state_rds_resamp(values.num_Taps-1, 0.0);
 
-
+	std::vector<float> RRC_coeffs;
 	std::vector<float> RF_h;
 	// std::vector<float> final_coeffs;
 
@@ -262,7 +269,8 @@ int main(int argc, char *argv[])
 	// //BPF COEFFICIENTS FOR STEREO PILOT FREQUENCY 1ST and STEREOBAND 2ND
 	// BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 	// BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
-	
+	impulseResponseLPF(values.IF_Fs, 3000, values.num_Taps, dem_rds_LPF_coeffs);
+	impulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs);
 
 	// float final = 0.0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	// auto full_signal_start = std::chrono::high_resolution_clock::now();
@@ -312,10 +320,32 @@ int main(int argc, char *argv[])
     		delayBlock(rds_filtered, rds_processed_delay, rds_state_delay);
 			conv_ds_fast(CR_rds_filtered, rds_nonlin, CR_rds_BPF_coeffs, 1, CR_state_rds);
 			fmPll(CR_rds_filtered, rds_NCO_outp, rds_lockInFreq, values.IF_Fs, rds_ncoScale, rds_phaseAdjust, rds_normBandwidth, rds_state); 		
+			
+			dem_mixer.resize(CR_rds_filtered.size());
+			for(int i = 0; i<CR_rds_filtered.size();i++){
+				dem_mixer[i] = CR_rds_filtered[i] * rds_filtered[i];
+			}
+			conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
+
+    		conv_rs(dem_rds_resamp_filtered, dem_rds_LPF_filtered, dem_rds_resamp_coeffs, values.audio_decim, values.audio_expan, dem_state_rds_LPF);
+			
+			impulseResponseRootRaisedCosine(RRC_coeffs, rds_fs_rat_res, values.num_Taps);
+			conv_ds_fast(outp_rrc, dem_rds_resamp_filtered, RRC_coeffs, 1, state_rrc);
+
+			
+			
+			
+			std::cerr<<" dem resamp filtered size "<<dem_rds_resamp_filtered.size()<<std::endl;
 			if (block_id == 20){
+				std::vector<float> pllinput_index;
+				genIndexVector(pllinput_index, CR_rds_filtered.size());
+				logVector("CR_rds_filtered", pllinput_index, CR_rds_filtered);
 				std::vector<float> vector_index;
-				genIndexVector(vector_index, rds_NCO_outp.size());
-				logVector("pll output", vector_index,rds_NCO_outp);
+				genIndexVector(vector_index, outp_rrc.size());
+				logVector("outp_rrc", vector_index, outp_rrc);
+				std::vector<float> dem_mixer_index;
+				genIndexVector(dem_mixer_index, rds_NCO_outp.size());
+				logVector("rds_NCO_outp", dem_mixer_index, dem_mixer);
 			}
 	
 	
