@@ -280,6 +280,8 @@ void audio_thread(int mode, std::string channel) {
 //-----------------------RDS THREAD BELOW---------------------
 // void rdsThread(int mode) {
 // 	//--------------RDS INITIALIZATION------------------
+//Mode values;
+//    values.configMode(mode);
 // 	float RDSFb = 54000;
 // 	float RDSFe = 60000;
 
