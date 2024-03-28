@@ -11,17 +11,19 @@ class ThreadSafeQueue {
 private:
     mutable std::mutex m;                   // Mutex to protect access to the queue
     std::queue<std::shared_ptr<T>> q;       // Standard queue wrapped inside the thread-safe queue
-    std::condition_variable cv;             // Condition variable for notifying waiting threads
+    std::condition_variable cv;
+    std::condition_variable cv_producer;     // Condition variable for notifying when space is available
+    const size_t max_size = 4;             // Condition variable for notifying waiting threads
 
 public:
     // Enqueues an element by copying it into a shared_ptr and adding it to the queue
     void push(T value) {
-        std::shared_ptr<T> data(std::make_shared<T>(std::move(value))); // Create a shared_ptr to the new data
+        std::shared_ptr<T> data(std::make_shared<T>(std::move(value)));
+        std::unique_lock<std::mutex> lock(m); // Create a shared_ptr to the new data
         
         //for rds threading ~ comment out otherwise
-        cv.wait(lock, [this]{ return q.size() < 3; }); // Use the condition_variable inside ThreadSafeQueue to make the RF thread wait when the RDS queue is full.
+        cv_producer.wait(lock, [this]{ return q.size() < max_size; }); // Use the condition_variable inside ThreadSafeQueue to make the RF thread wait when the RDS queue is full.
         
-        std::lock_guard<std::mutex> lock(m);  // Lock the mutex during the queue operation
         q.push(data);                         // Push the data onto the queue
         cv.notify_one();                      // Notify one waiting thread that there is new data available
     }
@@ -32,6 +34,7 @@ public:
         cv.wait(lock, [this]{ return !q.empty(); }); // Wait until the queue is not empty
         std::shared_ptr<T> result = q.front(); // Get the front element
         q.pop();                              // Remove the element from the queue
+        cv_producer.notify_one();             // Notify one waiting producer that space is available
         return result;                         // Return the data to the caller
     }
 
@@ -111,19 +114,23 @@ void rf_thread(int mode)  {                        // Continue producing until d
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-            auto demod_data = std::make_shared<std::vector<float>>(demod);
+            //---------------------UNCOMMENT FOR RDS THREADING 
+            //auto demod_data = std::make_shared<std::vector<float>>(demod);
             //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
-            tsQueue.push(demod_data);
+            //tsQueue.push(demod_data);
+            tsQueue.push(demod);
         }
     }
         // Push the produced data onto the queue
 
 }
 
+
 // // Function representing the work of the audio thread (the consumer)
-void audio_thread(int mode) {
+void audio_thread(int mode, std::string channel) {
     Mode values;
     values.configMode(mode);
+    int block_count = 0;
     //std::cerr<<"ENTERED AUDIO THREAD"<<std::endl;
     std::vector<float> state_mono(values.num_Taps-1, 0.0);
     std::vector<float> state_stereo(values.num_Taps-1, 0.0); // band pass 22k-54k
@@ -169,14 +176,16 @@ void audio_thread(int mode) {
 
 	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
-    //int i = 0;
+
     while (!exitwhile) {                           // Continue consuming until done is true
         if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break
             exitwhile = true;
             break;
         }
+        //int i  = 0;
         //std::cerr<<"test"<<std::endl;
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+        std::cerr << "Processing block " << block_count << std::endl;
         // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
         // i++;
         // if (demod_ptr) {
@@ -190,15 +199,7 @@ void audio_thread(int mode) {
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
         //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
         conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
-
-        std::vector<short int> audio_data(processed_data.size());
-  			for (unsigned int k = 0; k < processed_data.size(); k++){
-  				if (std::isnan(processed_data[k])) audio_data[k] = 0;
-  				else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-
-  			}
-  			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-  			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+        
         //std::cerr<<"processed data size: "<<processed_data.size()<<std::endl;
         //-------------MONO PATH END----------------------------------
 
@@ -207,20 +208,21 @@ void audio_thread(int mode) {
         conv_ds_fast(stereo_filtered, *demod_ptr, stereo_BPF_coeffs, 1, state_stereo);
 
         // std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<<"stereo filtered size: "<<stereo_filtered.size()<<std::endl;
-        std::vector<float> pilot_NCO_outputQ;
-        fmPll(pilot_filtered, pilot_NCO_outp,pilot_NCO_outputQ, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
+
+        fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
 		mixer.resize(stereo_filtered.size(), 0.0);
 		for(unsigned int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
         }
-        
+
+
+
         conv_rs(mixer_filtered, mixer, final_coeffs, values.audio_decim, values.audio_expan, state_mixer);
 
         // std::cerr<<"mixer size: "<<mixer.size()<<" mixer filtered size: "<<mixer_filtered.size()<<std::endl;
         right_stereo.resize(mixer_filtered.size());
         left_stereo.resize(mixer_filtered.size());
         for(unsigned int i = 0; i < mixer_filtered.size(); i++) {
-            //!!!! is equation correct?
             right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
             left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
         }
@@ -235,48 +237,46 @@ void audio_thread(int mode) {
             i += 2;
         }
 
-        // std::cerr<<"stereo data size: "<<stereo_data.size()<<std::endl;
-        ///------------BELOW WRITES THE MONO PATH------------
-	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-			// std::vector<short int> audio_data(processed_data.size());
-			// for (unsigned int k = 0; k < processed_data.size(); k++){
-			// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+            //WRITE MONO CHANNEL AUDIO TO STANDARD OUTPUT AS 16 BIT
+            if (channel == "m"){
+            std::vector<short int> audio_data(processed_data.size());
+                for (unsigned int k = 0; k < processed_data.size(); k++){
+                    if (std::isnan(processed_data[k])) audio_data[k] = 0;
+                    else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
 
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-	// 		//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
-			// std::vector<short int> audio_data(left_stereo.size());
-			// for (unsigned int k = 0; k < left_stereo.size(); k++){
-			// 	if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
-			// std::vector<short int> audio_data(right_stereo.size());
-			// for (unsigned int k = 0; k < right_stereo.size(); k++){
-			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
-		// 	std::vector<short int> audio_data(stereo_data.size());
-		// 	for (unsigned int k = 0; k < stereo_data.size(); k++){
-		// 		if (std::isnan(stereo_data[k])) audio_data[k] = 0;
-		// 		else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-		// 	}
-		// 	//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-		// 	fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+                }
+                //WRITES STEREO CHANNEL AUDIO TO STANDARD OUTPUT AS 16 bit
+                fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+            } else if(channel == "s"){
+                std::vector<short int> audio_data(stereo_data.size());
+                for (unsigned int k = 0; k < stereo_data.size(); k++){
+                    if (std::isnan(stereo_data[k])) audio_data[k] = 0;
+                    else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+                }
+                //WRITES RIGHT CHANNEL AUDIO TO STANDARD OUTPUT AS 16 bit
+                fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+            } else if (channel == "r"){
+                std::vector<short int> audio_data(right_stereo.size());
+			    for (unsigned int k = 0; k < right_stereo.size(); k++){
+				    if (std::isnan(right_stereo[k])) audio_data[k] = 0;
+				    else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES LEFT CHANNEL AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+            } else if (channel == "l"){
+                std::vector<short int> audio_data(left_stereo.size());
+			    for (unsigned int k = 0; k < left_stereo.size(); k++){
+				    if (std::isnan(left_stereo[k])) audio_data[k] = 0;
+				    else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
+			}
+			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
+			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
+            }
     //
+        block_count++;
     }
 }
-
+//-----------------------RDS THREAD BELOW---------------------
 // void rdsThread(int mode) {
 // 	//--------------RDS INITIALIZATION------------------
 // 	float RDSFb = 54000;
@@ -389,35 +389,4 @@ void audio_thread(int mode) {
 //     }
 // }
 
-// // Placeholder function for data production
-// bool done = false; // Global flag to control the thread loop execution
 
-std::vector<float> produce_data(int mode) {
-    Mode values;
-    values.configMode(mode);
-    std::vector<float> i_data, q_data;
-	std::vector<float> filt_i, filt_q;
-    std::vector<float> state_i(values.num_Taps, 0.0);
-	std::vector<float> state_q(values.num_Taps, 0.0);
-    std::vector<float> RF_h;
-    std::vector<float> demod;
-    float prev_i = 0.0;
-    float prev_q = 0.0;
-    gainimpulseResponseLPF(values.RF_Fs, values.RF_Fc, values.num_Taps, RF_h, values.audio_expan);
-    while (true){
-        for(unsigned int block_id = 0; ; block_id++){
-            std::cerr<<"Block id "<<block_id<<std::endl;
-            std::vector<float> block_data(values.BLOCK_SIZE);
-            readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
-            if((std::cin.rdstate()) != 0){
-                std::cerr<<"End of input stream reached" << std::endl;
-                exit(1);
-            }
-            split_audio_iq(block_data, i_data, q_data);
-            conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
-            conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
-            FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
-
-        }
-    }
-}

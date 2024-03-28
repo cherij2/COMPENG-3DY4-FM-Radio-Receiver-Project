@@ -26,53 +26,12 @@ Ontario, Canada
 #include "rds.h"
 
 
-
-
-// void readStdinBlockData(unsigned int num_samples, unsigned int block_id, std::vector<float> &block_data){
-// 	std::vector<char> raw_data(num_samples);
-// 	std::cin.read(reinterpret_cast<char*>(&raw_data[0]), num_samples*sizeof(char));
-// 	for (int k=0; k<(int)num_samples; k++){
-// 		block_data[k] = float(((unsigned char)raw_data[k]-128)/128.0);
-// 	}
-// }
-
-/* int main(int argc, char* argv[])
-{
-	// Default mode 0
-	int mode = 0;
-	std::string audio_channel = "m"; // default to mono
-
-	// Mode Selection
-	if (argc < 2) {
-		std::cerr << "Operating in default mode 0 with mono audio" << std::endl;
-	} else if (argc == 2) {
-		mode = atoi(argv[1]);
-		if (mode > 3) {
-			std::cerr << "Wrong mode " << mode << ". Mode must be between 0 and 3." << std::endl;
-			exit(1);
-		}
-		std::cerr << "Operating in mode " << mode << " with mono audio" << std::endl;
-	} else if (argc == 3) {
-		mode = atoi(argv[1]);
-		audio_channel = argv[2];
-
-		if (mode > 3 || (audio_channel != "m" && audio_channel != "s" && audio_channel != "r")) {
-			std::cerr << "Usage: " << argv[0] << " <mode> [audio channel]" << std::endl;
-			std::cerr << "<mode> is a value from 0-3 and [audio channel] can be 'm' for mono, 's' for stereo, or 'r' for RDS." << std::endl;
-			exit(1);
-		}
-		std::cerr << "Operating in mode " << mode << " with audio channel " << audio_channel << std::endl;
-	} else {
-		std::cerr << "Usage: " << argv[0] << " <mode> [audio channel]" << std::endl;
-		std::cerr << "<mode> is a value from 0-3 and [audio channel] can be 'm' for mono, 's' for stereo, or 'r' for RDS." << std::endl;
-		exit(1);
-	} *///above implements the 3 arguments that will be given ./project <mode> [audio_channel]
-
 int main(int argc, char *argv[])
 {
 
 	// Default mode 0
 	int mode = 0;
+	std::string channel = "m";
 
 	// Mode Selection
 	if (argc<2){
@@ -83,7 +42,16 @@ int main(int argc, char *argv[])
 			std::cerr << "Wrong mode " << mode << std::endl;
 			exit(1);
 		}
-	} else {
+	} else if(argc == 3){
+		mode = atoi(argv[1]);
+		channel = argv[2];
+		if (mode > 3){
+			std::cerr << "Wrong mode "<< mode << std::endl;
+		} else if (channel != "m" || channel != "s" || channel != "r"){
+			std::cerr << "wrong channel "<<channel << std::endl;
+		}
+	} 
+	else {
 		std::cerr << "Usage: " << argv[0] << std::endl;
 		std::cerr << "or " << std::endl;
 		std::cerr << "Usage: " << argv[0] << " <mode>" << std::endl;
@@ -98,56 +66,20 @@ int main(int argc, char *argv[])
 	// }
 	// rf_thread(mode);
 	// audio_thread(mode);
-	//std::thread rf_producer(rf_thread, mode);  // Create the RF producer thread
-    //std::thread audio_consumer(audio_thread, mode);  // Create the audio consumer thread
+	std::thread rf_producer(rf_thread, mode);  // Create the RF producer thread
+    std::thread audio_consumer(audio_thread, mode);  // Create the audio consumer thread
 
     // Wait for both threads to finish
-    //audio_consumer.join();
-	//rf_producer.join();
-    //audio_consumer.join();
+    
+	rf_producer.join();
+    audio_consumer.join();
 	
-	
+	//--------------------------------UNCOMMENT BELOW TO RUN RDS WITHOUT THREADING-------------------
+	/*
 	Mode values;
 	values.configMode(mode);
 	
-	// // DEFAULT VALUES ASSUMING MODE 0
-	// // int RF_Fs = 2400e3;
-	// // float RF_Fc = 100e3;
-	// // float IF_Fs = 240e3;
-	// // float mono_Fc;
-	// // float num_Taps = 101; //if too high of a value takes too long to run
-	// // unsigned short int rf_decim = 10;
-	// // float audio_decim = 5;
-	// // float audio_expan = 1;
-	// // int BLOCK_SIZE = 1024*rf_decim*audio_decim*2;
-
-	// // //MODE SELECT
-	// // if (mode == 1){ //only downsampling in this mode
-	// // 	RF_Fs = 960e3;
-	// // 	IF_Fs = 320e3;
-	// // 	rf_decim = 3;
-	// // 	audio_decim = 8;
-	// // 	audio_expan = 1;
-	// // 	BLOCK_SIZE = 1500*audio_decim*rf_decim*2;
-	// // } else if (mode == 2){ //resampling needed in this mode
-	// // 	RF_Fs = 2400e3;
-	// // 	IF_Fs = 240e3;
-	// // 	rf_decim = 10;
-	// // 	audio_decim = 800;
-	// // 	audio_expan = 147;
-	// // 	BLOCK_SIZE = audio_decim*audio_expan;
-	// // } else if(mode == 3){ //resampling needed in this mode
-	// // 	RF_Fs = 960e3;
-	// // 	IF_Fs = 120e3;
-	// // 	rf_decim = 8;
-	// // 	audio_decim = 400;
-	// // 	audio_expan = 147;
-	// // 	BLOCK_SIZE = 15*audio_decim*rf_decim*2;
-	// // }
-	// // std::cerr<<"audio expan: "<<audio_expan<<" audio decim: "<<audio_decim<<std::endl;
-	// // std::cerr<<"min between these two: " <<(audio_expan/audio_decim)<<" "<<(IF_Fs/2)<<" and this valie: "<<IF_Fs/2<<std::endl;
-	// // mono_Fc = ((std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) < 16000) ? (std::min((int)((audio_expan/audio_decim)*(IF_Fs/2)), (int)IF_Fs/2)) : 16000.0;
-
+	
 	int RF_Fs = values.RF_Fs;
 	float RF_Fc = values.RF_Fc;
 	float IF_Fs = values.IF_Fs;
@@ -157,7 +89,6 @@ int main(int argc, char *argv[])
 	float audio_decim = values.audio_decim;
 	float audio_expan = values.audio_expan;
 	int BLOCK_SIZE = values.BLOCK_SIZE;
-	//--------------RDS INITIALIZATION------------------
 	float RDSFb = 54000;
 	float RDSFe = 60000;
 
@@ -280,7 +211,7 @@ int main(int argc, char *argv[])
 			std::vector<float> block_data(BLOCK_SIZE);
 			readStdinBlockData(BLOCK_SIZE, block_id, block_data); //block_data holds the data for one block
 			//if((std::cin.rdstate()) != 0) {
-			if(block_id == 21){
+			if(block_id == 21){//RUNS UNTIL BLOCK 21 THEN BREAKS (USED FOR TESTING)
 				std::cerr << "End of input stream reached" << std::endl;
 				//FINAL RUN TIME IS THE ADDITION OF THE RUN TIME FOR EACH BLOCK
 				//std::cerr << "Final run time  = "<<final<<std::endl;
@@ -362,179 +293,10 @@ int main(int argc, char *argv[])
 				logVector("rds_NCO_outpQ", pre_cdr_q, rds_NCO_outpQ);
 			}
 	
-	
-	// std::cerr << "I data size: "<< i_data.size() << std::endl;
-	// 		// std::cerr << "RF H size: "<< RF_h.size()<<std::endl;
-	// 		// std::cerr<< "Filtered I data size: "<< filt_i.size()<<std::endl;
-	// 		// std::cerr <<"Demodulated data size: "<<demod.size()<<std::endl;
-
-
-	// 		delayBlock(demod, mono_processed_delay, state_delay);
-	// 		//-------------------MONO PATH START------------------------
-	// 		//WE CAN USE THE RESAMPLING FUNCTION BECAUSE WE ASSIGN audio_expan a value of 1
-
-	// 		// std::cerr << "final_coeffs size: "<< final_coeffs.size() << std::endl;
-	// 		// std::cerr << "IF_Fs: " << IF_Fs << " mono_Fc: "<< mono_Fc<<std::endl;
-
-	// 		conv_rs(processed_data, mono_processed_delay, final_coeffs, audio_decim, audio_expan, state_mono);
-
-	// 		//-------------------MONO PATH END--------------------------
-
-	// 		//-------------------STEREO PATH START--------------------------
-	// 		// fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-	// 		//bandPass(float Fb, float Fe, float Fs, unsigned short int num_taps, std::vector &h)
-
-
-	// 		//to get pilot freq
-
-	// 		//std::cerr<<"pilot BPF coeffs: "<<pilot_BPF_coeffs.size()<<std::endl;
-	// 		// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
-	// 		// 	std::cerr<<"BPF within 18.5k and 19.5k: "<<pilot_BPF_coeffs[i]<<std::endl;
-
-
-	// 		// }
-	// 		// for (int i = 0; i<pilot_BPF_coeffs.size(); i++){
-	// 		// std::cerr<<"LPF for IF: "<<final_coeffs[i]<<std::endl;}
-	// 		conv_ds_fast(pilot_filtered, demod, pilot_BPF_coeffs, 1, state_pilot);
-
-	// 		//convolveFIR(std::vector<float> &y, const std::vector<float> &x, const std::vector<float> &h)
-
-	// 		//to get stereo band freq
-		
-	// 		conv_ds_fast(stereo_filtered, demod, stereo_BPF_coeffs, 1, state_stereo);
-	// 		// for (int i = 0; i<stereo_BPF_coeffs.size(); i++){
-	// 		// 	std::cerr<<"BPF within 22k and 54k: "<<stereo_BPF_coeffs[i]<<std::endl;
-
-
-	// 		// }
-	// 		//std::cerr<<"pilot_BPF_coeffs size: "<< pilot_BPF_coeffs.size()<<"\tstereo_BPF_coeffs: "<<stereo_BPF_coeffs.size()<<std::endl;
-	// 		//std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<< "\tstereo_filtered size: "<<stereo_filtered.size()<<std::endl;
-
-
-
-
-	// 		// for (int i = 0; i < 30;i++){
-	// 		// 	std::cerr<<"pilot filtered at "<<i<<" "<<pilot_filtered[i]<<std::endl;
-	// 		// }
-	// 		// for(int i = 0; i <30;i++){
-	// 		// 	std::cerr<<"pilot band coeffs at "<<i<<" "<< pilot_BPF_coeffs[i]<<std::endl;
-	// 		// }
-	// 		//PLL for pilot
-	// 		//void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float integrator, float phaseEst, float feedbackI, float feedbackQ, int trigOffset, float ncoScale = 2.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-	
-	// 		fmPll(pilot_filtered, pilot_NCO_outp, pilot_lockInFreq, IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
-	// 		// pilot_filtered = convoluted band pass from 18.5 to 19.5
-	// 		// pilot_NCO_outp = simulated wave (NCO)
-	// 		// lockinFreq = 19000 (given)
-	// 		// IF_Fs = intermediate frequency
-	// 		// ncoScale = (2x for stereo) (0.5x for RDS) given value
-	// 		// phaseAdjust, normBandwidth = given value
-	// 		// state = struct that used that updates every block 
-
-
-	// 		//MIXER
-	// 		mixer.resize(stereo_filtered.size(), 0.0);
-	// 		for(int i = 0; i < stereo_filtered.size(); i++) {
-	// 			mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
-	// 			// if(i < 30){
-	// 			// std::cerr<< "index: "<<i<<"\tpilot NCO output "<<pilot_NCO_outp[i]<<"\tstereo filtered"<<stereo_filtered[i]<<"\tmixer val: "<<mixer[i]<<std::endl;
-				
-	// 			// }
-	// 		}
-
-			
-
-	// 		//conv_ds_fast(mixer_filtered, mixer, final_coeffs, audio_decim, state_mixer);
-	// 		conv_rs(mixer_filtered, mixer, final_coeffs, audio_decim, audio_expan, state_mixer);
-	// 		// for (int i = 0; i < 30; i++){
-	// 		// 	std::cerr<<"mixer coeffs: "<<final_coeffs[i]<<std::endl;
-	// 		// }
-
-	// 		//RIGHT AND LEFT STEREO
-	// 		right_stereo.resize(mixer_filtered.size());
-	// 		left_stereo.resize(mixer_filtered.size());
-	// 		for(int i = 0; i < mixer_filtered.size(); i++) {
-	// 			//!!!! is equation correct?
-	// 			right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
-	// 			left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
-	// 			// if(i < 30){
-	// 			// std::cerr<<"Mixer filtered at index: "<<i<<" value: "<<mixer_filtered[i]<<std::endl;
-	// 			// }
-	// 		}
-
-
-
-	// 		//std::cerr<<"Mixer filtered size: "<<mixer_filtered.size()<<std::endl;
-
-
-	// 		//figure out how to implement 'state saving' in
-	// 		//finish implementing delay function in filter
-	// 		stereo_data.resize(right_stereo.size()*2);
-	// 		int i = 0;
-	// 		for (int k = 0; k< right_stereo.size(); k++){
-	// 			stereo_data[i] = left_stereo[k];
-	// 			stereo_data[i+1] = right_stereo[k];
-	// 			i += 2;
-			
-	// 		}
-	// 		// std::cerr<<"Stereo Data size: "<<stereo_data.size()<<"Left and right: "<<left_stereo.size()<<right_stereo.size()<<std::endl;
-	// 		// for (int i  = 0; i < 21;i++){
-	// 		// 	std::cerr<<"Stereo data at index: "<<i<<" data: "<<stereo_data[i]<<std::endl;
-	// 		// 	std::cerr<<"Right data: "<<right_stereo[i]<<std::endl;
-	// 		// 	std::cerr<<"Left data: "<<left_stereo[i]<<std::endl;
-	// 		// }
-
-	// 		//-------------------STEREO PATH END--------------------------
-
-
-	// 		//std::cerr << "Read block " << block_id << " Processed_data size: " << processed_data.size() << std::endl;
-
-	// 		//BELOW SHOWS THE RUN TIME FOR EACH BLOCK AFTER CONVOLUTION IS RUN
-	// 		auto block_end = std::chrono::high_resolution_clock::now();
-	// 		std::chrono::duration<double, std::milli> block_time = block_end - block_start;
-	// 		std::cerr << "Block: "<< block_id<< " has runtime: "<<block_time.count()<<"\n"<<std::endl;
-	// 		final += block_time.count();
-	// 		///------------BELOW WRITES THE MONO PATH------------
-	// 		//CODE BELOW IS WHAT WRITES THE AUDIO IF NAN assigns audio at k = 0;
-	// 		// std::vector<short int> audio_data(processed_data.size());
-	// 		// for (unsigned int k = 0; k < processed_data.size(); k++){
-	// 		// 	if (std::isnan(processed_data[k])) audio_data[k] = 0;
-	// 		// 	else audio_data[k] = static_cast<short int> (processed_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-
-	// 		// }
-	// 		// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-	// 		// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-	// 		//------------BELOW WRITES ONLY ONE CHANNEL THE LEFT------------
-	// 		std::vector<short int> audio_data(left_stereo.size());
-	// 		for (unsigned int k = 0; k < left_stereo.size(); k++){
-	// 			if (std::isnan(left_stereo[k])) audio_data[k] = 0;
-	// 			else audio_data[k] = static_cast<short int> (left_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-	// 		}
-	// 		//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-	// 		fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//------------BELOW WRITES ONLY ONE CHANNEL THE RIGHT------------
-			// std::vector<short int> audio_data(right_stereo.size());
-			// for (unsigned int k = 0; k < right_stereo.size(); k++){
-			// 	if (std::isnan(right_stereo[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (right_stereo[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
-			//---------BELOW WRITES THE INTERLEAVED LEFT AND RIGHT CHANNELS------
-			// std::vector<short int> audio_data(stereo_data.size());
-			// for (unsigned int k = 0; k < stereo_data.size(); k++){
-			// 	if (std::isnan(stereo_data[k])) audio_data[k] = 0;
-			// 	else audio_data[k] = static_cast<short int> (stereo_data[k]*16384); //MULTIPLYING BY 16384 NORMALIZES DATA B/W -1 and 1
-			// }
-			// //WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
-			// fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
-
 		}//ends for
 
 
 		return 0;
 	}//ends while
+	*/
 }
