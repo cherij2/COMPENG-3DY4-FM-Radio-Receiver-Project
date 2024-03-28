@@ -107,14 +107,14 @@ int main(int argc, char *argv[])
 		rf_decim = 3;
 		audio_decim = 8;
 		audio_expan = 1;
-		BLOCK_SIZE = 1000*audio_decim*rf_decim*2;
+		BLOCK_SIZE = 800*audio_decim*rf_decim*2;
 	} else if (mode == 2){ //resampling needed in this mode
 		RF_Fs = 2400e3;
 		IF_Fs = 240e3;
 		rf_decim = 10;
 		audio_decim = 800;
 		audio_expan = 147;
-		BLOCK_SIZE = audio_decim*audio_expan;
+		BLOCK_SIZE = 5*audio_decim*rf_decim*2;
 	} else if(mode == 3){ //resampling needed in this mode
 	//when playing around with the IF Fs numbers
 	//when IF Fs/2 < 100e3 then there is distortion in the mode
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		audio_decim = 400;
 		//audio_decim = 800;
 		audio_expan = 147;
-		BLOCK_SIZE = 15*audio_decim*rf_decim;
+		BLOCK_SIZE = 6*audio_decim*rf_decim*2;
 		//RF_Fc = 60e3;
 		//num_Taps = 1001;
 	}
