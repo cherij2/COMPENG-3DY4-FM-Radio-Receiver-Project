@@ -17,6 +17,10 @@ public:
     // Enqueues an element by copying it into a shared_ptr and adding it to the queue
     void push(T value) {
         std::shared_ptr<T> data(std::make_shared<T>(std::move(value))); // Create a shared_ptr to the new data
+        
+        //for rds threading ~ comment out otherwise
+        cv.wait(lock, [this]{ return q.size() < 3; }); // Use the condition_variable inside ThreadSafeQueue to make the RF thread wait when the RDS queue is full.
+        
         std::lock_guard<std::mutex> lock(m);  // Lock the mutex during the queue operation
         q.push(data);                         // Push the data onto the queue
         cv.notify_one();                      // Notify one waiting thread that there is new data available
@@ -29,17 +33,6 @@ public:
         std::shared_ptr<T> result = q.front(); // Get the front element
         q.pop();                              // Remove the element from the queue
         return result;                         // Return the data to the caller
-    }
-
-    // Tries to pop an element from the queue without waiting
-    bool try_pop(T& value) {
-        std::lock_guard<std::mutex> lock(m);  // Lock the mutex during the queue operation
-        if(q.empty()) {
-            return false;                     // Return false if the queue is empty
-        }
-        value = std::move(*q.front());        // Move the value from the front of the queue into the provided variable
-        q.pop();                              // Remove the element from the queue
-        return true;                          // Return true to indicate a value was popped
     }
 
     // Checks if the queue is empty
@@ -78,9 +71,10 @@ public:
     }
 };
 
+
 // ==================================
 
-ThreadSafeQueue<std::vector<float>> tsQueue; // Global instance of the thread-safe queue
+ThreadSafeQueue<std::vector<float>> tsQueue; // Global instance of the thread-safe queuedemod_ptr
 
 // // Function representing the work of the RF thread (the producer)
 void rf_thread(int mode)  {                        // Continue producing until done is true
@@ -117,8 +111,9 @@ void rf_thread(int mode)  {                        // Continue producing until d
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+            auto demod_data = std::make_shared<std::vector<float>>(demod);
             //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
-            tsQueue.push(demod);
+            tsQueue.push(demod_data);
         }
     }
         // Push the produced data onto the queue
@@ -282,17 +277,116 @@ void audio_thread(int mode) {
     }
 }
 
-// Entry point of the program
-// int main() {
-//     std::thread producer(rf_thread);          // Create the producer thread
-//     std::thread consumer(audio_thread);       // Create the consumer thread
+// void rdsThread(int mode) {
+// 	//--------------RDS INITIALIZATION------------------
+// 	float RDSFb = 54000;
+// 	float RDSFe = 60000;
 
-//     // Other code to control the threads, for example to set 'done' when needed
+// 	std::vector<float> rds_BPF_coeffs;
+// 	std::vector<float> rds_filtered;
+// 	std::vector<float> state_rds_bb(values.num_Taps-1, 0.0);
 
-//     producer.join();                          // Wait for the producer thread to finish
-//     consumer.join();                          // Wait for the consumer thread to finish
+//     std::vector<float> CR_rds_BPF_coeffs;
+// 	std::vector<float> CR_rds_filtered;
+// 	std::vector<float> CR_state_rds(values.num_Taps-1, 0.0);
 
-//     return 0;
+// 	std::vector<float> rds_nonlin;
+
+// 	float CR_RDSFb = 113500;
+// 	float CR_RDSFe = 114500;
+
+// 	//WHAT DO FOR MODE 1 AND 3??
+// 	float rds_fs_rat_res = values.SPS * 2375;
+// 	std::vector<float> outp_rrc;
+// 	std::vector<float> state_rrc(values.num_Taps-1, 0.0);
+
+
+//     //for BLOCK DELAY RDS
+//     std::vector<float> rds_processed_delay;
+//     std::vector<float> rds_state_delay((values.num_Taps-1)/2, 0.0);
+
+//     State rds_state = {0.0, 0.0, 1.0, 0.0, 0, 1.0, 1.0};
+//     float rds_lockInFreq = 114000;
+//     std::vector<float> rds_NCO_outp;
+// 	std::vector<float> rds_NCO_outpQ;
+//     float rds_normBandwidth = 0.003;
+//     float rds_phaseAdjust = 0.0;
+//     float rds_ncoScale = 0.5;
+
+
+//     std::vector<float> dem_mixer;
+//     std::vector<float> dem_rds_LPF_coeffs;
+//     std::vector<float> dem_rds_LPF_filtered;
+//     std::vector<float> dem_state_rds_LPF(values.num_Taps-1, 0.0);
+
+
+//     float dem_resamplerFs = 2375 * values.SPS;
+//     float dem_resamplerFc = std::min((values.audio_expan / values.audio_decim) *(2375.0/2), (2375.0/2));
+// 	std::vector<float> dem_rds_resamp_coeffs(values.num_Taps * values.audio_expan, 0.0);
+//     std::vector<float> dem_rds_resamp_filtered;
+//     std::vector<float> dem_state_rds_resamp(values.num_Taps-1, 0.0);
+
+// 	std::vector<float> RRC_coeffs;
+// 	std::vector<float> RF_h;
+// 	// std::vector<float> final_coeffs;
+
+// 	std::vector<float> i_data, q_data;
+// 	std::vector<float> filt_i, filt_q;
+// 	std::vector<float> demod;
+// 	std::vector<float> state_i(values.num_Taps-1, 0.0);
+// 	std::vector<float> state_q(values.num_Taps-1, 0.0);
+// 	// std::vector<float> state_mono(num_Taps-1, 0.0);
+
+// 	// std::cerr<<"TEST"<<std::endl;
+// 	float prev_i = 0.0;
+// 	float prev_q = 0.0;
+    
+//     while (!done) {
+//         if (demod_ptr) {
+//             // process rds data
+//         }
+//         // rds synchronization, extraction, etc.....
+//         // after processing, notify the condition_variable to possibly (just maybe) wake up the rf thread ????
+//         BPFCoeffs(RDSFb, RDSFe, values.IF_Fs, values.num_Taps, rds_BPF_coeffs); // last is output
+//         //BPF CARRIER RECOVERY
+//         BPFCoeffs(CR_RDSFb, CR_RDSFe, values.IF_Fs, values.num_Taps, CR_rds_BPF_coeffs); // last is output
+//         impulseResponseLPF(values.IF_Fs, 3000, values.num_Taps, dem_rds_LPF_coeffs); // last is output
+//         gainimpulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs, values.rds_up); // 4th is output
+
+//         // DEMOD DATA
+//         std::shared_ptr<std::vector<float>> demod = tsQueue.wait_and_pop(); // Block until data is available
+        
+//         conv_ds_fast(rds_filtered, demod, rds_BPF_coeffs, 1, state_rds_bb);
+//         // std::cerr<<"after rds 0"<<std::endl;
+//         rds_nonlin.resize(rds_filtered.size());
+//         for(int i = 0; i < rds_filtered.size(); i++) {
+//             rds_nonlin[i] = rds_filtered[i] * rds_filtered[i];
+//         }
+//         // std::cerr<<"after non linearity"<<std::endl;
+//         //ALL PASS FILTER
+//         delayBlock(rds_filtered, rds_processed_delay, rds_state_delay);
+//         conv_ds_fast(CR_rds_filtered, rds_nonlin, CR_rds_BPF_coeffs, 1, CR_state_rds);
+//         // std::cerr<<"tst"<<std::endl;
+//         //PLL
+//         fmPll(CR_rds_filtered, rds_NCO_outp, rds_NCO_outpQ, rds_lockInFreq, values.IF_Fs, rds_ncoScale, rds_phaseAdjust, rds_normBandwidth, rds_state); 		
+//         // std::cerr<<"after pll"<<std::endl;
+
+//         dem_mixer.resize(CR_rds_filtered.size());
+//         for(int i = 0; i<CR_rds_filtered.size();i++){
+//             dem_mixer[i] = 3*rds_NCO_outp[i] * rds_processed_delay[i];
+//         }
+        
+//         conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
+//         conv_rs(dem_rds_resamp_filtered, dem_rds_LPF_filtered, dem_rds_resamp_coeffs, values.rds_down, values.rds_up, dem_state_rds_LPF);
+
+//         impulseResponseRootRaisedCosine(RRC_coeffs, rds_fs_rat_res, values.num_Taps);
+//         conv_ds_fast(outp_rrc, dem_rds_resamp_filtered, RRC_coeffs, 1, state_rrc);
+//         std::vector<float> bits;
+//         // std::cerr<<"before get bits"<<std::endl;
+//         get_bits(outp_rrc, values.SPS, bits);
+//         // std::cerr<<"after getting bits"<<std::endl;
+    
+//     }
 // }
 
 // // Placeholder function for data production
