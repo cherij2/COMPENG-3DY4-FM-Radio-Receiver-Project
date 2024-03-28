@@ -90,7 +90,7 @@ void BPFCoeffs(float Fb, float Fe, float Fs, unsigned short int num_taps, std::v
 
 
 
-void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale , float phaseAdjust, float normBandwidth , State& state) {
+void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut,std::vector<float> &ncoOutQ, float freq, float Fs, float ncoScale , float phaseAdjust, float normBandwidth , State& state) {
     const float Cp = 2.666;
     const float Ci = 3.555;
 
@@ -98,6 +98,7 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     const float Ki = (normBandwidth * normBandwidth) * Ci;
 
     ncoOut.clear();ncoOut.resize((pllIn.size() + 1));
+	ncoOutQ.clear();ncoOutQ.resize((pllIn.size()+1));
 
     float integrator = state.integrator;
     float phaseEst = state.phaseEst;
@@ -105,6 +106,7 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     float feedbackQ = state.feedbackQ;
     int trigOffset = state.trigOffset;
     float prev_ncoOut = state.prev_ncoOut;
+	float prev_ncoOutQ = state.prev_ncoOutQ;
 
     // Set the first element of ncoOut with the last element of the previous block
     ncoOut[0] = prev_ncoOut;
@@ -122,10 +124,12 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
         feedbackI = std::cos(trigArg);
         feedbackQ = std::sin(trigArg);
         ncoOut[k + 1] = std::cos(trigArg * ncoScale + phaseAdjust);
+		ncoOutQ[k+1] = std::sin(trigArg * ncoScale + phaseAdjust);
     }
 
     // Save the last element of ncoOut for the next block
     prev_ncoOut = ncoOut.back();
+	prev_ncoOutQ = ncoOutQ.back();
 
     // Update state
     state.integrator = integrator;
@@ -134,8 +138,10 @@ void fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float fr
     state.feedbackQ = feedbackQ;
     state.trigOffset = trigOffset;
     state.prev_ncoOut = prev_ncoOut;
+	state.prev_ncoOutQ = prev_ncoOutQ;
 
 }
+
 void delayBlock(const std::vector<float> &input_block, std::vector<float> &output_block, std::vector<float> &state) {
 	output_block.clear();
 	output_block.resize(input_block.size());
@@ -161,7 +167,7 @@ void delayBlock(const std::vector<float> &input_block, std::vector<float> &outpu
 // 			}
 // 			else
 // 			{
-// 				yb[n] += h[k] * state[h.size() - 1 + (n - k)]; //
+// 			pilot_filtered	yb[n] += h[k] * state[h.size() - 1 + (n - k)]; //
 // 			}
 // 		}
 // 	}

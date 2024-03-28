@@ -4,7 +4,7 @@ CC = g++
 CFLAGS = -c -Wall -O3 -std=c++17 #-mcpu=cortex-a72+crypto #comment -mcpu=cortex-a72+crypto if running on VM
 LDFLAGS = -pthread
 INCLUDE = -I../include/
-SOURCES = project.cpp iofunc.cpp filter.cpp  fourier.cpp  genfunc.cpp  logfunc.cpp RFfront.cpp mode.cpp thread.cpp
+SOURCES = project.cpp iofunc.cpp filter.cpp  fourier.cpp  genfunc.cpp  logfunc.cpp RFfront.cpp mode.cpp thread.cpp RDS.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 EXECUTABLE = project
 
