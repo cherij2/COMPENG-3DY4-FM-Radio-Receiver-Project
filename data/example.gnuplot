@@ -19,9 +19,9 @@ set xlabel 'rrc outp'               # set x-axis label
 set yrange [-1.2:1.2]                    # set y plot range
 set xrange [0:1000] 
 set y2range [-0.2:1.2]                      # set x plot range
-set x2range[0:33]
-plot '../data/outp_rrc.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#008800' notitle \
-     '../data/bits.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#32a852' notitle axes x2y2
+#set x2range[0:33]
+plot '../data/outp_rrc.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#008800' notitle,\
+     '../data/bits.dat' using 1:2 with lines lt 1 lw 2 lc rgb '#32a852' notitle axes x1y2
 
 # freq domain (PSD)
 set ylabel 'Spectrum (dB/Hz)'            # set y-axis label
@@ -32,6 +32,6 @@ set y2range [-1:1]
 set xrange [0:119]                       # set x plot range
 # add your own .dat file for PSD as part of the take-home
 plot '../data/rds_NCO_outp.dat' using 1:2 with lines lt 1 lw 3 lc rgb '#880000' notitle, \
-     '../data/CR_rds_filtered.dat' using 1:2 with lines lt 1 lw 3 lc rgb '#880000' notitle axes x1y2
+     '../data/rds_NCO_outpQ.dat' using 1:2 with lines lt 1 lw 3 lc rgb '#000000' notitle
 
 unset multiplot

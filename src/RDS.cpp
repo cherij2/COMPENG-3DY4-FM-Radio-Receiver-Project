@@ -45,7 +45,7 @@ void get_bits (const std::vector<float> &rrc_after, int sps, std::vector<float> 
             count++;
         }
     }
-
+    bits.resize(rrc_after.size(), 0);
     //this keeps running again and again and again and again and again and again 
     for(int i = offset+5; i < (int)rrc_after.size() - 5; i += sps) {
         int check_fb = i - check_within;
@@ -59,11 +59,14 @@ void get_bits (const std::vector<float> &rrc_after, int sps, std::vector<float> 
                 i = j;
             }
         }
+
         if(rrc_after[i] > 0) {
-            bits.push_back(1);  //local max
+            //bits.push_back(1);  //local max
+            bits[i] = 1;
         }  
         if(rrc_after[i] < 0) {
-            bits.push_back(0);  //local max
+            //bits.push_back(-1);  //local max
+            bits[i] = -1;
         }
         if(count >= std::floor(rrc_after.size() / sps)) {
             for(int t = (rrc_after.size() - sps); t < sps; t++) {

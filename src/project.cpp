@@ -271,8 +271,8 @@ int main(int argc, char *argv[])
 	// BPFCoeffs(pilotFb, pilotFe, IF_Fs, STnumTaps, pilot_BPF_coeffs);
 	// BPFCoeffs(stereoFb, stereoFe, IF_Fs, STnumTaps, stereo_BPF_coeffs);
 	impulseResponseLPF(values.IF_Fs, 3000, values.num_Taps, dem_rds_LPF_coeffs);
-	impulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs);
-
+	//impulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs);
+	gainimpulseResponseLPF(dem_resamplerFs, dem_resamplerFc, values.num_Taps, dem_rds_resamp_coeffs, values.rds_up);
 	// float final = 0.0;//THIS HOLDS THE FINAL RUN TIME OF MONO PATH FOR NOW
 	// auto full_signal_start = std::chrono::high_resolution_clock::now();
 	while (true){
@@ -328,7 +328,7 @@ int main(int argc, char *argv[])
 
 			dem_mixer.resize(CR_rds_filtered.size());
 			for(int i = 0; i<CR_rds_filtered.size();i++){
-				dem_mixer[i] = 50 * rds_NCO_outp[i] * rds_processed_delay[i];
+				dem_mixer[i] = 3*rds_NCO_outp[i] * rds_processed_delay[i];
 			}
 			
 			conv_ds_fast(dem_rds_LPF_filtered, dem_mixer, dem_rds_LPF_coeffs, 1, dem_state_rds_LPF);
@@ -357,6 +357,9 @@ int main(int argc, char *argv[])
 				std::vector<float>output_bits;
 				genIndexVector(output_bits, bits.size());
 				logVector("bits", output_bits, bits);
+				std::vector<float> pre_cdr_q;
+				genIndexVector(pre_cdr_q, rds_NCO_outpQ.size());
+				logVector("rds_NCO_outpQ", pre_cdr_q, rds_NCO_outpQ);
 			}
 	
 	
