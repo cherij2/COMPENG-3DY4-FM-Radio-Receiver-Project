@@ -5,6 +5,8 @@
 #include "RFfront.h"
 
 std::atomic<bool> done{false};
+std::atomic<float> total_block_time;
+
 
 template <typename T>
 class ThreadSafeQueue {
@@ -13,7 +15,7 @@ private:
     std::queue<std::shared_ptr<T>> q;        // Standard queue wrapped inside the thread-safe queue
     std::condition_variable cv;              // Condition variable for notifying waiting threads
     std::condition_variable cv_producer;     // Condition variable for notifying when space is available
-    const size_t max_size = 4;               // Maximum size of the queue
+    const size_t max_size = 100;               // Maximum size of the queue
 
 public:
     // Enqueues an element by copying it into a shared_ptr and adding it to the queue
@@ -95,6 +97,8 @@ void rf_thread(int mode)  {                        // Continue producing until d
     bool exitwhile = false;
     while (!exitwhile){
         for(unsigned int block_id = 0; ; block_id++){
+            total_block_time = 0.0;
+            auto block_start = std::chrono::high_resolution_clock::now();
             std::cerr<<"Reading block id "<<block_id<<std::endl;
             std::vector<float> block_data(values.BLOCK_SIZE);
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
@@ -119,6 +123,10 @@ void rf_thread(int mode)  {                        // Continue producing until d
             //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             //tsQueue.push(demod_data);
             tsQueue.push(demod);
+            auto block_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> block_time = block_end - block_start;
+            std::cerr << "Block: "<< block_id << " has runtime: " << block_time.count() << std::endl;
+            total_block_time  = total_block_time + block_time.count();
             //std::cerr<<"size after pushing: "<<tsQueue.size()<<std::endl;
             std::cerr<<"\n";
         }
@@ -275,6 +283,8 @@ void audio_thread(int mode, std::string channel) {
 			//WRITES AUDIO TO STANDARD OUTPUT AS 16 bit
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
             }
+        //total_block_time = .count();
+        std::cerr << "BLOCK RUNTIME: "<<total_block_time<<std::endl;
     //
         block_count++;
     }
