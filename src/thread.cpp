@@ -95,10 +95,16 @@ void rf_thread(int mode)  {                        // Continue producing until d
     float prev_q = 0.0;
     float final_block_time = 0.0;
     float final_split_time = 0.0;
-    float final_conv_iq_time = 0.0;
+    float final_conv_i_time = 0.0;
+    float final_conv_q_time = 0.0;
     float final_demod_time = 0.0;
     float final_enqueue_time = 0.0;
+    float final_read_block_in = 0.0;
+    auto impulse_start = std::chrono::high_resolution_clock::now();
     gainimpulseResponseLPF(values.RF_Fs, values.RF_Fc, values.num_Taps, RF_h, values.audio_expan);
+    auto impulse_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> impulse_time = impulse_end - impulse_start;
+    float impulse_time_block = impulse_time.count();
     std::cerr << "NUMBER OF TAPS = "<<values.num_Taps<<std::endl;
     bool exitwhile = false;
     while (!exitwhile){
@@ -107,14 +113,20 @@ void rf_thread(int mode)  {                        // Continue producing until d
             auto block_start = std::chrono::high_resolution_clock::now();
             std::cerr<<"Reading block id "<<block_id<<std::endl;
             std::vector<float> block_data(values.BLOCK_SIZE);
+            auto read_block_start = std::chrono::high_resolution_clock::now();
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
+            auto read_block_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> read_block_time = read_block_end - read_block_start;
+            final_read_block_in += read_block_time.count();
             if((std::cin.rdstate()) != 0){
             //if(block_id == 100){
                 std::cerr << "BLOCK SIZE "<<values.BLOCK_SIZE<<std::endl;
                 std::cerr<<"End of input stream reached" << std::endl;
+                std::cerr << "FRONT END IMPULSE TIME = "<<impulse_time_block<< " ms"<<std::endl;
                 std::cerr << "NUMBER OF TAPS = "<<values.num_Taps << std::endl;
                 std::cerr << "RUNTIME OF SPLITTING IQ = "<<final_split_time << " ms"<<std::endl;
-                std::cerr << "RUNTIME OF CONV I AND Q = "<<final_conv_iq_time << " ms"<<std::endl;
+                std::cerr << "RUNTIME OF CONV I = "<<final_conv_i_time << " ms"<<std::endl;
+                std::cerr << "RUNTIME OF CONV Q = "<<final_conv_q_time << " ms"<<std::endl;
                 std::cerr << "RUNTIME OF FINAL DEMOD = "<<final_demod_time<< " ms"<<std::endl;
                 std::cerr << "RUNTIME OF ENQUEUE OPERATION = "<<final_enqueue_time<< " ms"<<std::endl;
                 std::cerr << "RUNTIME OF WHOLE BLOCK = "<<final_block_time<< " ms"<<std::endl;
@@ -131,18 +143,22 @@ void rf_thread(int mode)  {                        // Continue producing until d
             auto split_start = std::chrono::high_resolution_clock::now();
             split_audio_iq(block_data, i_data, q_data);
             auto split_end = std::chrono::high_resolution_clock::now();
-            auto conv_iq_start = std::chrono::high_resolution_clock::now();
+            auto conv_i_start = std::chrono::high_resolution_clock::now();
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
+            auto conv_i_end = std::chrono::high_resolution_clock::now();
+            auto conv_q_start = std::chrono::high_resolution_clock::now();
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
-            auto conv_iq_end = std::chrono::high_resolution_clock::now();
+            auto conv_q_end = std::chrono::high_resolution_clock::now();
             auto demod_start = std::chrono::high_resolution_clock::now();
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
             auto demod_end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> split_time = split_end - split_start;
-            std::chrono::duration<double, std::milli> conv_iq_time = conv_iq_end - conv_iq_start;
+            std::chrono::duration<double, std::milli> conv_i_time = conv_i_end - conv_i_start;
+            std::chrono::duration<double, std::milli> conv_q_time = conv_q_end - conv_q_start;
             std::chrono::duration<double, std::milli> demod_time = demod_end - demod_start;
             final_split_time += split_time.count();
-            final_conv_iq_time += conv_iq_time.count();
+            final_conv_i_time += conv_i_time.count();
+            final_conv_q_time += conv_q_time.count();
             final_demod_time += demod_time.count();
             //---------------------UNCOMMENT FOR RDS THREADING 
             //auto demod_data = std::make_shared<std::vector<float>>(demod);
