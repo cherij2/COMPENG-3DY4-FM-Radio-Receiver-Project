@@ -15,7 +15,7 @@ private:
     std::queue<std::shared_ptr<T>> q;        // Standard queue wrapped inside the thread-safe queue
     std::condition_variable cv;              // Condition variable for notifying waiting threads
     std::condition_variable cv_producer;     // Condition variable for notifying when space is available
-    const size_t max_size = 100;               // Maximum size of the queue
+    const size_t max_size = 4;               // Maximum size of the queue
 
 public:
     // Enqueues an element by copying it into a shared_ptr and adding it to the queue
@@ -93,7 +93,13 @@ void rf_thread(int mode)  {                        // Continue producing until d
     std::vector<float> demod;
     float prev_i = 0.0;
     float prev_q = 0.0;
+    float final_block_time = 0.0;
+    float final_split_time = 0.0;
+    float final_conv_iq_time = 0.0;
+    float final_demod_time = 0.0;
+    float final_enqueue_time = 0.0;
     gainimpulseResponseLPF(values.RF_Fs, values.RF_Fc, values.num_Taps, RF_h, values.audio_expan);
+    std::cerr << "NUMBER OF TAPS = "<<values.num_Taps<<std::endl;
     bool exitwhile = false;
     while (!exitwhile){
         for(unsigned int block_id = 0; ; block_id++){
@@ -104,7 +110,14 @@ void rf_thread(int mode)  {                        // Continue producing until d
             readStdinBlockData(values.BLOCK_SIZE, block_id, block_data);
             if((std::cin.rdstate()) != 0){
             //if(block_id == 100){
+                std::cerr << "BLOCK SIZE "<<values.BLOCK_SIZE<<std::endl;
                 std::cerr<<"End of input stream reached" << std::endl;
+                std::cerr << "NUMBER OF TAPS = "<<values.num_Taps << std::endl;
+                std::cerr << "RUNTIME OF SPLITTING IQ = "<<final_split_time << " ms"<<std::endl;
+                std::cerr << "RUNTIME OF CONV I AND Q = "<<final_conv_iq_time << " ms"<<std::endl;
+                std::cerr << "RUNTIME OF FINAL DEMOD = "<<final_demod_time<< " ms"<<std::endl;
+                std::cerr << "RUNTIME OF ENQUEUE OPERATION = "<<final_enqueue_time<< " ms"<<std::endl;
+                std::cerr << "RUNTIME OF WHOLE BLOCK = "<<final_block_time<< " ms"<<std::endl;
                 //tsQueue.print_contents();
                 std::cerr<<"size of queue: "<<tsQueue.size()<<std::endl;
                 exitwhile = true;
@@ -113,20 +126,38 @@ void rf_thread(int mode)  {                        // Continue producing until d
                 std::cerr<<"done flag "<<done<<std::endl;
                 break;
             }
+            //auto function_start = std::chrono::high_resolution_clock::now();
             // std::cerr<<"Block id "<<block_id<<std::endl;
+            auto split_start = std::chrono::high_resolution_clock::now();
             split_audio_iq(block_data, i_data, q_data);
+            auto split_end = std::chrono::high_resolution_clock::now();
+            auto conv_iq_start = std::chrono::high_resolution_clock::now();
             conv_ds_fast(filt_i, i_data, RF_h, values.rf_decim, state_i);
             conv_ds_fast(filt_q, q_data, RF_h, values.rf_decim, state_q);
+            auto conv_iq_end = std::chrono::high_resolution_clock::now();
+            auto demod_start = std::chrono::high_resolution_clock::now();
             FM_demod(filt_i, filt_q, prev_i, prev_q, demod);
+            auto demod_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> split_time = split_end - split_start;
+            std::chrono::duration<double, std::milli> conv_iq_time = conv_iq_end - conv_iq_start;
+            std::chrono::duration<double, std::milli> demod_time = demod_end - demod_start;
+            final_split_time += split_time.count();
+            final_conv_iq_time += conv_iq_time.count();
+            final_demod_time += demod_time.count();
             //---------------------UNCOMMENT FOR RDS THREADING 
             //auto demod_data = std::make_shared<std::vector<float>>(demod);
             //std::cerr<<"size before pushing: "<<tsQueue.size()<<std::endl;
             //tsQueue.push(demod_data);
+            auto queue_push_start = std::chrono::high_resolution_clock::now();
             tsQueue.push(demod);
-            auto block_end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> block_time = block_end - block_start;
+            auto queue_push_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> queue_push_time = queue_push_end - queue_push_start;
+            final_enqueue_time += queue_push_time.count();
+            //auto block_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> block_time = queue_push_end - block_start;
+            final_block_time += block_time.count();
             std::cerr << "Block: "<< block_id << " has runtime: " << block_time.count() << std::endl;
-            total_block_time  = total_block_time + block_time.count();
+            //total_block_time  = total_block_time + block_time.count();
             //std::cerr<<"size after pushing: "<<tsQueue.size()<<std::endl;
             std::cerr<<"\n";
         }
@@ -196,7 +227,7 @@ void audio_thread(int mode, std::string channel) {
         //int i  = 0;
         //std::cerr<<"test"<<std::endl;
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
-        std::cerr << "Processing block " << block_count << std::endl;
+        //std::cerr << "Processing block " << block_count << std::endl;
         // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
         // i++;
         // if (demod_ptr) {
@@ -284,7 +315,7 @@ void audio_thread(int mode, std::string channel) {
 			fwrite(&audio_data[0], sizeof(short int),audio_data.size(),stdout);
             }
         //total_block_time = .count();
-        std::cerr << "BLOCK RUNTIME: "<<total_block_time<<std::endl;
+        //std::cerr << "BLOCK RUNTIME: "<<total_block_time<<std::endl;
     //
         block_count++;
     }
