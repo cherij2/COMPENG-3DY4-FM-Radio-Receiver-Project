@@ -237,19 +237,53 @@ void audio_thread(int mode, std::string channel) {
     auto mono_impulse_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> mono_impulse_time = mono_impulse_end - mono_impulse_start;
     final_mono_impulse += mono_impulse_time.count();
+    auto bpf_pilot_start = std::chrono::high_resolution_clock::now();
 	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
+    auto bpf_pilot_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> bpf_pilot_time = bpf_pilot_end - bpf_pilot_start;
+    auto bpf_extract_start = std::chrono::high_resolution_clock::now();
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
+    auto bpf_extract_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> bpf_extract_time = bpf_extract_end - bpf_extract_start;
     
     float final_pop_time = 0.0;
     float final_mono_convrs_time = 0.0;
     float final_mono_path_time = 0.0;
+    //float final_delay_time = 0.0;
+    float final_stereo_channel_time = 0.0;
+    float final_stereo_carrier_recovery_time = 0.0;
+    float final_stereo_processing_time = 0.0;
+    float final_stereo_path_time = 0.0;
+    float final_delay_time = 0.0;
+    float final_conv_pilot_time = 0.0;
+    float final_conv_stereo_channel_time = 0.0;
+    float final_pll_time = 0.0;
+    float final_mixer_time = 0.0;
+    float final_stereo_conv_rs_time = 0.0;
+    float final_lr_channel_time = 0.0;
+    float final_interleave_time = 0.0;
+
     
     while (!exitwhile) {                           // Continue consuming until done is true
         auto mono_block_start = std::chrono::high_resolution_clock::now();
+        auto stereo_block_start = std::chrono::high_resolution_clock::now();
         if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break
             std::cerr << "FINAL MONO IMPULSE RESPONSE GENERATION = "<<final_mono_impulse<< " ms"<<std::endl;
             std::cerr << "FINAL POP TIME = "<<final_pop_time<< " ms"<<std::endl;
             std::cerr << "FINAL MONO RESAMPLING = "<<final_mono_convrs_time<< " ms"<<std::endl;
+            std::cerr << "FINAL MONO RUNTIME = "<<final_mono_path_time<< " ms"<<std::endl;
+            std::cerr << "FINAL STEREO CHANNEL EXTRACTION TIME = "<<final_stereo_channel_time<< " ms"<<std::endl;
+            std::cerr << "FINAL STEREO CARRIER RECOVERY TIME = "<<final_stereo_carrier_recovery_time<< " ms"<<std::endl;
+            std::cerr << "FINAL STEREO PROCESSING TIME = "<<final_stereo_processing_time<< " ms"<<std::endl;
+            std::cerr << "FINAL STEREO PATH TIME = "<<final_stereo_path_time<< " ms"<<std::endl;
+            std::cerr << "FINAL DELAY TIME = "<<final_delay_time<< " ms"<<std::endl;
+            std::cerr << "FINAL CONV PILOT = "<<final_conv_pilot_time<< " ms"<<std::endl;
+            std::cerr << "FINAL CONV STEREO TIME = "<<final_conv_stereo_channel_time<< " ms"<<std::endl;
+            std::cerr << "FINAL PLL TIME = "<<final_pll_time<< " ms"<<std::endl;
+            std::cerr << "FINAL MIXER TIME = "<<final_mixer_time<< " ms"<<std::endl;
+            std::cerr << "FINAL STEREO RESAMPLING = "<<final_stereo_conv_rs_time<< " ms"<<std::endl;
+            std::cerr << "FINAL LR CHANNEL = "<<final_lr_channel_time<< " ms"<<std::endl;
+            std::cerr << "FINAL FINAL INTERLEAVE TIME = "<<final_interleave_time<<" ms"<<std::endl;
             exitwhile = true;
             break;
         }
@@ -271,7 +305,11 @@ void audio_thread(int mode, std::string channel) {
         //     std::cerr<<"demid vector size "<<demod_vector.size()<<std::endl;
         // }
         //-------------MONO PATH START--------------------------------
+        auto delay_start = std::chrono::high_resolution_clock::now();
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
+        auto delay_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> delay_time = delay_end - delay_start;
+        final_delay_time += delay_time.count();
         //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
         auto mono_convrs_start = std::chrono::high_resolution_clock::now();
         conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
@@ -281,36 +319,65 @@ void audio_thread(int mode, std::string channel) {
         std::chrono::duration<double, std::milli> mono_path_time = mono_block_end - mono_block_start;
         final_mono_path_time += mono_path_time.count();
         final_mono_convrs_time += mono_convrs_time.count();
+        final_delay_time += delay_time.count();
 
         //std::cerr<<"processed data size: "<<processed_data.size()<<std::endl;
         //-------------MONO PATH END----------------------------------
 
         //fmPll(const std::vector<float>& pllIn, std::vector<float>& ncoOut, float freq, float Fs, float ncoScale = 1.0, float phaseAdjust = 0.0, float normBandwidth = 0.01)
-        conv_ds_fast(pilot_filtered, *demod_ptr, pilot_BPF_coeffs, 1, state_pilot);
+        auto stereo_channel_start = std::chrono::high_resolution_clock::now();
         conv_ds_fast(stereo_filtered, *demod_ptr, stereo_BPF_coeffs, 1, state_stereo);
+        auto stereo_channel_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> stereo_channel_time = stereo_channel_end - stereo_channel_start;
+        final_stereo_channel_time += stereo_channel_time.count()+bpf_extract_time.count();
+        final_conv_stereo_channel_time += stereo_channel_time.count();
 
+        auto stereo_carrier_start = std::chrono::high_resolution_clock::now();
+        conv_ds_fast(pilot_filtered, *demod_ptr, pilot_BPF_coeffs, 1, state_pilot);
+        auto stereo_conv_pilot_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> conv_pilot_time = stereo_conv_pilot_end - stereo_carrier_start;
+        final_conv_pilot_time += conv_pilot_time.count();
         // std::cerr<<"pilot filtered size: "<<pilot_filtered.size()<<"stereo filtered size: "<<stereo_filtered.size()<<std::endl;
-
+        auto fm_pll_start = std::chrono::high_resolution_clock::now();
         fmPll(pilot_filtered, pilot_NCO_outp,pilot_NCO_outpQ, pilot_lockInFreq, values.IF_Fs, ncoScale, phaseAdjust, normBandwidth, state);
+        auto fm_pll_end = std::chrono::high_resolution_clock::now();
+        auto stereo_carrier_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> pll_time = fm_pll_end - fm_pll_start;
+        final_pll_time += pll_time.count();
+        std::chrono::duration<double, std::milli> stereo_carrier_recovery_time = stereo_carrier_end - stereo_carrier_start;
+        final_stereo_carrier_recovery_time += stereo_carrier_recovery_time.count()+bpf_pilot_time.count();
+        auto stereo_processing_start = std::chrono::high_resolution_clock::now();
+        auto mixer_start = std::chrono::high_resolution_clock::now();
 		mixer.resize(stereo_filtered.size(), 0.0);
 		for(unsigned int i = 0; i < stereo_filtered.size(); i++) {
             mixer[i] = 2 * pilot_NCO_outp[i] * stereo_filtered[i];
         }
+        auto mixer_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> mixer_time = mixer_end - mixer_start;
+        final_mixer_time += mixer_time.count();
 
 
-
+        auto stereo_conv_rs_start = std::chrono::high_resolution_clock::now();
         conv_rs(mixer_filtered, mixer, final_coeffs, values.audio_decim, values.audio_expan, state_mixer);
-
+        auto stereo_conv_rs_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> stereo_conv_rs_time = stereo_conv_rs_end - stereo_conv_rs_start;
+        final_stereo_conv_rs_time += stereo_conv_rs_time.count();
         // std::cerr<<"mixer size: "<<mixer.size()<<" mixer filtered size: "<<mixer_filtered.size()<<std::endl;
+        auto lr_channel_start = std::chrono::high_resolution_clock::now();
         right_stereo.resize(mixer_filtered.size());
         left_stereo.resize(mixer_filtered.size());
         for(unsigned int i = 0; i < mixer_filtered.size(); i++) {
             right_stereo[i] = (mixer_filtered[i] - processed_data[i]);
             left_stereo[i] = (mixer_filtered[i] + processed_data[i]);
         }
+        auto lr_channel_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> lr_channel_time = lr_channel_end - lr_channel_start;
+        final_lr_channel_time += lr_channel_time.count();
+
         // std::cerr<<"left size: "<<left_stereo.size()<<" right stereo size: "<<right_stereo.size()<<std::endl;
         // std::cerr<<"right stereo size" <<right_stereo.size()<<std::endl;
         // std::cerr<<"left stereo size" <<left_stereo.size()<<std::endl;
+        auto interleave_start = std::chrono::high_resolution_clock::now();
         stereo_data.resize(right_stereo.size()*2);
         int i = 0;
         for (unsigned int k = 0; k< right_stereo.size(); k++){
@@ -318,6 +385,15 @@ void audio_thread(int mode, std::string channel) {
             stereo_data[i+1] = right_stereo[k];
             i += 2;
         }
+        auto interleave_end = std::chrono::high_resolution_clock::now();
+        auto stereo_processing_end = std::chrono::high_resolution_clock::now();
+        auto stereo_block_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> stereo_processing_time = stereo_processing_end - stereo_processing_start;
+        final_stereo_processing_time += stereo_processing_time.count();
+        std::chrono::duration<double, std::milli> stereo_path_time = stereo_block_end - stereo_block_start;
+        final_stereo_path_time += stereo_path_time.count();
+        std::chrono::duration<double, std::milli> interleave_time = interleave_end - interleave_start;
+        final_interleave_time += interleave_time.count();
 
             //WRITE MONO CHANNEL AUDIO TO STANDARD OUTPUT AS 16 BIT
             if (channel == "m"){
