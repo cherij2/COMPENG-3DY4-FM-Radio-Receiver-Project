@@ -230,19 +230,36 @@ void audio_thread(int mode, std::string channel) {
     std::vector<float> final_coeffs;
 
     bool exitwhile = false;
-	gainimpulseResponseLPF(values.IF_Fs*values.audio_expan, values.mono_Fc, values.num_Taps*values.audio_expan, final_coeffs, values.audio_expan);//MONO PATH
 
+    float final_mono_impulse = 0.0;
+    auto mono_impulse_start = std::chrono::high_resolution_clock::now();
+	gainimpulseResponseLPF(values.IF_Fs*values.audio_expan, values.mono_Fc, values.num_Taps*values.audio_expan, final_coeffs, values.audio_expan);//MONO PATH
+    auto mono_impulse_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> mono_impulse_time = mono_impulse_end - mono_impulse_start;
+    final_mono_impulse += mono_impulse_time.count();
 	BPFCoeffs(pilotFb, pilotFe, values.IF_Fs, values.num_Taps, pilot_BPF_coeffs);
 	BPFCoeffs(stereoFb, stereoFe, values.IF_Fs, values.num_Taps, stereo_BPF_coeffs);
-
+    
+    float final_pop_time = 0.0;
+    float final_mono_convrs_time = 0.0;
+    float final_mono_path_time = 0.0;
+    
     while (!exitwhile) {                           // Continue consuming until done is true
+        auto mono_block_start = std::chrono::high_resolution_clock::now();
         if(tsQueue.empty() && done) { // if queue is empty and there is nothing else that is coming in, then break
+            std::cerr << "FINAL MONO IMPULSE RESPONSE GENERATION = "<<final_mono_impulse<< " ms"<<std::endl;
+            std::cerr << "FINAL POP TIME = "<<final_pop_time<< " ms"<<std::endl;
+            std::cerr << "FINAL MONO RESAMPLING = "<<final_mono_convrs_time<< " ms"<<std::endl;
             exitwhile = true;
             break;
         }
         //int i  = 0;
         //std::cerr<<"test"<<std::endl;
+        auto pop_start = std::chrono::high_resolution_clock::now();
         std::shared_ptr<std::vector<float>> demod_ptr = tsQueue.wait_and_pop(); // Wait for and pop data from the queue
+        auto pop_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> pop_time = pop_end - pop_start;
+        final_pop_time += pop_time.count();
         //std::cerr << "Processing block " << block_count << std::endl;
         // std::cerr<<"i val: "<<i<<"demod ptr "<<demod_ptr<<std::endl;
         // i++;
@@ -256,8 +273,15 @@ void audio_thread(int mode, std::string channel) {
         //-------------MONO PATH START--------------------------------
         delayBlock(*demod_ptr, mono_processed_delay, state_delay);
         //std::cerr<<"mono process delay size "<<mono_processed_delay.size()<<std::endl;
+        auto mono_convrs_start = std::chrono::high_resolution_clock::now();
         conv_rs(processed_data, mono_processed_delay, final_coeffs, values.audio_decim, values.audio_expan, state_mono);
-        
+        auto mono_convrs_end = std::chrono::high_resolution_clock::now();
+        auto mono_block_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> mono_convrs_time = mono_convrs_end - mono_convrs_start;
+        std::chrono::duration<double, std::milli> mono_path_time = mono_block_end - mono_block_start;
+        final_mono_path_time += mono_path_time.count();
+        final_mono_convrs_time += mono_convrs_time.count();
+
         //std::cerr<<"processed data size: "<<processed_data.size()<<std::endl;
         //-------------MONO PATH END----------------------------------
 
