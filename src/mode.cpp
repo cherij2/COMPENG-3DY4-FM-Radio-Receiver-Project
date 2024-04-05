@@ -15,7 +15,7 @@ void Mode::configMode(int mode){
             rf_decim = 3;
             audio_decim = 8;
             audio_expan = 1;
-            BLOCK_SIZE = 1500*rf_decim*audio_decim*2;
+            BLOCK_SIZE = 1500*rf_decim*audio_decim;
             SPS = 1;
             rds_up = 1.0;
             rds_down = 1.0;
@@ -37,7 +37,7 @@ void Mode::configMode(int mode){
             rf_decim = 8;
             audio_decim = 400;
             audio_expan = 147;
-            BLOCK_SIZE = 15*audio_decim*rf_decim*2;
+            BLOCK_SIZE = 12*audio_decim*rf_decim*2;
             RF_Fc = 60e3;
             SPS = 1;
             rds_up = 1.0;
